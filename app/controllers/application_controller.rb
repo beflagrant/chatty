@@ -1,4 +1,6 @@
 class ApplicationController < ActionController::Base
+  include CableReady::Broadcaster
+
   def set_user(user)
     session[:user_id] = user.id
   end

@@ -1,11 +1,43 @@
-<div class="<%= message_color(message) %> rounded-2xl px-4 py-2 mb-2 text-s w-fit" id="<%= dom_id(message) %>">
+<div class="<%= message_styles(message, local_assigns) %>
+            rounded-2xl px-4 py-2 mb-2 text-s w-fit"
+     id="<%= dom_id(message) %>"
+     data-reflex-root="#<%= dom_id(message) %>"
+     data-controller="message">
   <div class="flex flex-row items-center">
     <div>
       <span class="inline-block font-bold text-sm"><%= message.user.handle %></span>
       <span class="inline-block ml-1 text-xs"><%= message.created_at.strftime("%l:%M%P") %></span>
+      <% if for_messenger?(message, local_assigns) %>
+        <% if @editing %>
+          <span data-reflex="click->Message#cancel"
+                data-id="<%= message.id %>"
+                class="inline-block text-xs ml-2 hover:underline"
+                id="<%= dom_id(message, "cancel") %>">
+            Cancel
+          </span>
+        <% else %>
+          <span data-reflex="click->Message#edit"
+                data-id="<%= message.id %>"
+                class="inline-block text-xs ml-2 hover:underline"
+                id="<%= dom_id(message, "edit") %>">
+            Edit
+          </span>
+        <% end %>
+      <% end %>
     </div>
   </div>
-  <div class="text-black w-full">
-    <%= message.comment %>
-  </div>
+  <% if @editing %>
+    <%= text_area_tag :comment, message.comment,
+      class: "block min-w-min w-72 md:w-96 m-2 h-32 p-2 text-black",
+      id: dom_id(message, "update"),
+      data: {
+        reflex: "change->Message#update",
+        action: "keyup->message#keyup",
+        id: message.id,
+        room_id: message.room_id } %>
+  <% else %>
+    <div class="text-black w-full">
+      <%= message.comment %>
+    </div>
+  <% end %>
 </div>

@@ -4,7 +4,15 @@ class MessagesController < ApplicationController
   def create
     @message = @room.messages.create(message_params)
 
-    redirect_to room_path(@room)
+    cable_ready[RoomChannel].logical_split(
+      selector: dom_id(@room),
+      operation: :insertAdjacentHtml,
+      default_html: render_to_string(@message, locals: { for_messenger: false }),
+      custom_html: {
+        [@message.user_id] => render_to_string(@message, locals: { for_messenger: true }),
+      }
+    )
+    cable_ready.broadcast_to(@room)
   end
 
   private
