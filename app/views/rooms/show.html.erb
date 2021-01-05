@@ -1,0 +1,12 @@
+<div>
+  <%= @room.name %>:
+  <%= @room.description %>
+</div>
+
+<div>
+  <%= render @room.messages %>
+</div>
+
+<%= form_with model: [@room, Message.new] do  |f| %>
+  <%= f.text_field :comment %>
+<% end %>
