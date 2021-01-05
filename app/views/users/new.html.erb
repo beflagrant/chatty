@@ -1,4 +1,9 @@
-<%= form_with model: @user do |f| %>
-  <%= f.label :handle %>
-  <%= f.text_field :handle %>
-<% end %>
+<div class="px-6 py-12 mx-auto">
+  <%= form_with model: @user do |f|%>
+    <div class="bg-gray-200 p-6 rounded max-w-lg mx-auto">
+      <%= f.label :handle, :class => "block uppercase font-bold" %>
+      <span class="block text-xs mb-2">Create your chatty handle and hit enter to start</span>
+      <%= f.text_field :handle, :class => "bg-white p-2 border rounded w-full", :placeholder => "ie. Mark Smith" %>
+    </div>
+  <% end %>
+</div>
