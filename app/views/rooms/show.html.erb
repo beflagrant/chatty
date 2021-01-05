@@ -5,20 +5,20 @@
 <div class="height-calc max-w-screen-lg mx-auto bg-white">
   <div class="pl-4 flex flex-col justify-end h-full">
     <div class="flex flex-col-reverse overflow-y-scroll h-full">
-      <div id="<%= dom_id(@room) %>" class="pt-4 mr-4 flex flex-col">
+      <div id="<%= dom_id(@room) %>" class="pt-4 mr-4 flex flex-col"
+          data-controller="room"
+          data-room-id-value=<%= @room.id %>>
         <%= render @room.messages %>
       </div>
     </div>
   </div>
 </div>
-<div class="bg-gray-100 bg-opacity-90 w-full p-4 max-w-screen-lg mx-auto">
-  <%= form_with model: [@room, Message.new] do  |f| %>
-    <div class="flex">
-      <%= f.text_field(
-        :comment,
-        autocomplete: "off",
-        placeholder: "Start a conversation",
-        class: "ring-1 ring-gray-300 rounded-full border py-3 flex-1 text-sm outline-none px-4") %>
-    </div>
-  <% end %>
+<div class="bg-gray-100 bg-opacity-90 w-full p-4 max-w-screen-lg mx-auto" data-controller="message">
+  <div class="flex">
+    <%= text_field_tag(:comment, "",
+      autocomplete: "off",
+      placeholder: "Start a conversation",
+      data: { reflex: "change->Message#create", room_id: @room.id },
+      class: "rounded-full border p-3 flex-1 text-sm outline-none") %>
+  </div>
 </div>

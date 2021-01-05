@@ -13,3 +13,16 @@ Turbolinks.start()
 ActiveStorage.start()
 
 import  "../stylesheets/application.scss";
+
+import CableReady from 'cable_ready'
+
+CableReady.DOMOperations['logicalSplit'] = detail => {
+  const crId = document.querySelector('meta[name="cable_ready_id"]').content
+  const custom = Object.entries(detail.customHtml).find(pair => pair[0].includes(crId))
+  const html = custom ? custom[1] : detail.defaultHtml
+  CableReady.DOMOperations[detail.operation]({
+    element: detail.element,
+    html: html,
+  })
+}
+import "controllers"
