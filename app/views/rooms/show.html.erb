@@ -2,11 +2,20 @@
   <%= @room.name %>:
   <%= @room.description %>
 </div>
-
-<div>
-  <%= render @room.messages %>
+<div class="flex flex-col height-calc justify-end">
+  <div class="px-4 flex flex-col justify-end h-full">
+    <div class="overflow-y-scroll">
+      <%= render @room.messages %>
+    </div>
+  </div>
 </div>
-
-<%= form_with model: [@room, Message.new] do  |f| %>
-  <%= f.text_field :comment %>
-<% end %>
+<div class="bg-primary bg-opacity-90 w-full p-4">
+  <%= form_with model: [@room, Message.new] do  |f| %>
+    <div class="flex">
+      <%= f.text_field(
+        :comment,
+        autocomplete: "off",
+        class: "rounded-full border p-3 flex-1 text-sm") %>
+    </div>
+  <% end %>
+</div>

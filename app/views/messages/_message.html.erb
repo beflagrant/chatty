@@ -1,5 +1,9 @@
-<div>
-  <%= time_ago_in_words(message.created_at) %>
-  <%= message.user.handle %>
-  <%= message.comment %>
+<div class="<%= message_color(message) %> rounded-3xl p-4 mb-2 text-s w-fit">
+  <span class="text-xs block">
+    <%= time_ago_in_words(message.created_at) %> ago
+  </span>
+  <div>
+    <span class="font-bold text-sm"><%= message.user.handle %>:</span>
+    <%= message.comment %>
+  </div>
 </div>
