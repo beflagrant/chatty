@@ -5,7 +5,11 @@
 <div class="flex flex-col height-calc justify-end">
   <div class="px-4 flex flex-col justify-end h-full">
     <div class="overflow-y-scroll">
-      <%= render @room.messages %>
+      <div id="<%= dom_id(@room) %>" class="mb-12"
+          data-controller="room"
+          data-room-id-value=<%= @room.id %>>
+        <%= render @room.messages %>
+      </div>
     </div>
   </div>
 </div>
