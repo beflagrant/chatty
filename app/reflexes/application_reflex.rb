@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 class ApplicationReflex < StimulusReflex::Reflex
-  # Put application-wide Reflex behavior and callbacks in this file. 
+  delegate :render, to: ApplicationController
+
+  # Put application-wide Reflex behavior and callbacks in this file.
   #
   # Example:
   #

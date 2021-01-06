@@ -10,14 +10,18 @@
         Cancel
       </span>
     <% else %>
-      <span data-reflex="click->Message#edit" data-id=<%= message.id %> >
+      <span data-reflex="click->Message#edit" data-id=<%= message.id %>
+            id ="<%= dom_id(message, "edit") %>">
         Edit
       </span>
     <% end %>
   <% end %>
   <% if @editing %>
-    <%= text_field_tag :comment, message.comment,
-      data: { reflex: "change->Message#update", id: message.id }  %>
+    <input type="text"
+           value="<%= message.comment %>"
+           data-reflex="change->Message#update"
+           data-id="<%= message.id %>"
+           data-room_id="<%= message.room_id %>"/>
   <% else %>
     <div class="text-black">
       <%= message.comment %>
