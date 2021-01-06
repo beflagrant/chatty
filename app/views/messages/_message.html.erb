@@ -2,17 +2,23 @@
             rounded-2xl px-4 py-2 mb-2 text-s w-fit"
      id="<%= dom_id(message) %>"
      data-reflex-root="#<%= dom_id(message) %>">
+  <span class="font-bold text-sm"><%= message.user.handle %></span>
+  <span class="ml-1 text-xs"><%= time_ago_in_words(message.created_at) %> ago</span>
+  <% if @editing %>
+    <span data-reflex="click->Message#cancel" data-id=<%= message.id %> >
+      Cancel
+    </span>
+  <% else %>
+    <span data-reflex="click->Message#edit" data-id=<%= message.id %> >
+      Edit
+    </span>
+  <% end %>
   <% if @editing %>
     <%= text_field_tag :comment, message.comment,
       data: { reflex: "change->Message#update", id: message.id }  %>
   <% else %>
-    <span class="font-bold text-sm"><%= message.user.handle %></span>
-    <span class="ml-1 text-xs"><%= time_ago_in_words(message.created_at) %> ago</span>
     <div class="text-black">
       <%= message.comment %>
     </div>
-    <span data-reflex="click->Message#edit" data-id=<%= message.id %> >
-      Edit
-    </span>
   <% end %>
 </div>

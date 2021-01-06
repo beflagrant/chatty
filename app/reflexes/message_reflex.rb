@@ -43,4 +43,8 @@ class MessageReflex < ApplicationReflex
     @message = Message.find(element.dataset[:id])
     @message.update(comment: element[:value])
   end
+
+  def cancel
+    @editing = false
+  end
 end
