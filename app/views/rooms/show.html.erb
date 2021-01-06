@@ -1,12 +1,13 @@
-<div class="text-center p-2 bg-gray-100 text-sm shadow relative">
+<div class="text-center p-2 bg-gray-100 text-sm shadow-lg relative">
   <b class="uppercase"><%= @room.name %>:</b>
   <%= @room.description %>
 </div>
-<div class="flex flex-col height-calc justify-end">
-  <div class="px-4 flex flex-col justify-end h-full">
-    <div class="flex flex-col-reverse overflow-y-scroll">
-      <div id="<%= dom_id(@room) %>" class="mb-12"
-        data-controller="room" data-room-id-value=<%= @room.id %>>
+<div class="height-calc">
+  <div class="pl-4 flex flex-col justify-end h-full">
+    <div class="flex flex-col-reverse overflow-y-scroll h-full">
+      <div id="<%= dom_id(@room) %>" class="pt-4 mr-4"
+          data-controller="room"
+          data-room-id-value=<%= @room.id %>>
         <%= render @room.messages %>
       </div>
     </div>
