@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   end
 
   def current_user
+    ## session isn't available during turbo requests/responses
     User.find_by(id: session[:user_id])
   end
   helper_method :current_user
