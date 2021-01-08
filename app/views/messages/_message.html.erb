@@ -1,11 +1,17 @@
 <%= turbo_frame_tag dom_id(message), class: "flex #{converse(message)}" do %>
-  <div class="<%= message_color(message) %> rounded-2xl px-4 py-2 mb-2 text-s w-fit" id="<%= dom_id(message) %>">
+  <div class="<%= message_color(message) %> rounded-2xl px-4 py-2 mb-2 text-s w-fit"
+        id="<%= dom_id(message) %>">
     <div class="flex flex-row items-center">
       <div>
         <span class="inline-block font-bold text-sm"><%= message.user.handle %></span>
         <span class="inline-block ml-1 text-xs"><%= message.created_at.strftime("%l:%M%P") %></span>
       </div>
     </div>
+    <span class="ml-1 text-xs">
+      <% if (current_user.nil? || message.user == current_user) %>
+        <%= link_to "edit", edit_room_message_path(message.room, message) %>
+      <% end %>
+    </span>
     <div class="text-black w-full">
       <%= message.comment %>
     </div>
