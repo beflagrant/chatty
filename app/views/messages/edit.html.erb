@@ -5,13 +5,12 @@
       <%= @message.created_at.strftime('%l:%M') %>
       <%= link_to "cancel", room_message_path([@room, @message]) %>
     </span>
-    <div class="text-black">
+    <div class="text-black w-full">
       <%= form_with model: [@room, @message] do  |f| %>
         <div class="flex">
           <%= f.text_field(
             :comment,
             autocomplete: "off" ) %>
-            <!-- class: "rounded-full border p-3 flex-1 text-sm outline-none") %> -->
         </div>
       <% end %>
     </div>

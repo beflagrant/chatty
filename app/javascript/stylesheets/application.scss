@@ -10,4 +10,7 @@ body {
 
 .height-calc {
   height: calc(100% - 154px);
+  @media only screen and (max-width: 495px) {
+    height: calc(100% - 174px);
+  }
 }

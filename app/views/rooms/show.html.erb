@@ -1,16 +1,18 @@
 <%= turbo_stream_from @room %>
-<div class="text-center p-2 bg-gray-100 text-sm shadow relative">
-  <b class="uppercase"><%= @room.name %>:</b>
-  <%= @room.description %>
-</div>
-<div class="flex flex-col height-calc justify-end">
-  <div class="px-4 flex flex-col justify-end h-full">
-    <div id="messages" class="overflow-y-scroll" data-controller="auto_scroll">
-      <%= render @room.messages %>
+  <div class="text-center p-2 bg-gray-100 text-sm shadow-lg relative">
+    <b class="uppercase"><%= @room.name %>:</b>
+    <%= @room.description %>
+  </div>
+  <div class="height-calc">
+    <div class="pl-4 flex flex-col justify-end h-full">
+      <div class="flex flex-col-reverse overflow-y-scroll h-full">
+        <div id="messages" class="pt-4 mr-4">
+          <%= render @room.messages %>
+        </div>
+      </div>
     </div>
   </div>
-</div>
-<div class="bg-primary bg-opacity-90 w-full p-4">
+  <div class="bg-primary bg-opacity-90 w-full p-4">
   <%= form_with model: [@room, Message.new],
                 data: { controller: "reset_form", action: "turbo:submit-end->reset_form#reset" } do  |f| %>
     <div class="flex">
