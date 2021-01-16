@@ -29,14 +29,15 @@ class MessageReflex < ApplicationReflex
 
   private
 
-  def message_broadcast(message, selector, operation)
+  def message_broadcast(message, selector, operation, **opts)
     cable_ready[RoomChannel].logical_split(
       selector: selector,
       operation: operation,
       default_html: render(message, locals: { for_messenger: false }),
       custom_html: {
         [current_user.id] => render(message, locals: { for_messenger: true }),
-      }
+      },
+      additional_options: opts
     ).broadcast_to(room)
   end
 

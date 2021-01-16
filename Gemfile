@@ -56,4 +56,4 @@ end
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
 gem 'tzinfo-data', platforms: [:mingw, :mswin, :x64_mingw, :jruby]
 
-gem "stimulus_reflex", "~> 3.4", git: "https://github.com/hopsoft/stimulus_reflex.git"
+gem "stimulus_reflex", "~> 3.4"

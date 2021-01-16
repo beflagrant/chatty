@@ -21,12 +21,11 @@ export default class extends ApplicationController {
     // add your code here, if applicable
   }
 
-  createSuccess(element, reflex, noop, reflexId) {
-    element.querySelector("#new-comment").value = ''
+  createSuccess(element) {
+    element.value = ''
   }
 
   keyup(event) {
-    if(event.key === "Enter") { this.stimulate("Message#update", event.target) }
+    if(event.key === "Enter") { event.target.blur() }
   }
-
 }

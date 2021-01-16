@@ -1,14 +1,3 @@
-GIT
-  remote: https://github.com/hopsoft/stimulus_reflex.git
-  revision: b618c503ad2caaa1420151335c06ce89e0f45b28
-  specs:
-    stimulus_reflex (3.4.0)
-      cable_ready (>= 4.4)
-      nokogiri
-      rack
-      rails (>= 5.2)
-      redis
-
 GEM
   remote: https://rubygems.org/
   specs:
@@ -78,8 +67,9 @@ GEM
       msgpack (~> 1.0)
     builder (3.2.4)
     byebug (11.1.3)
-    cable_ready (4.4.6)
+    cable_ready (4.5.0)
       rails (>= 5.2)
+      thread-local (>= 1.1.0)
     capybara (3.34.0)
       addressable
       mini_mime (>= 0.1.3)
@@ -90,20 +80,20 @@ GEM
       xpath (~> 3.2)
     childprocess (3.0.0)
     coderay (1.1.3)
-    concurrent-ruby (1.1.7)
+    concurrent-ruby (1.1.8)
     crass (1.0.6)
     erubi (1.10.0)
     ffi (1.14.2)
     globalid (0.4.2)
       activesupport (>= 4.2.0)
-    i18n (1.8.7)
+    i18n (1.8.8)
       concurrent-ruby (~> 1.0)
     jbuilder (2.10.1)
       activesupport (>= 5.0.0)
     listen (3.4.0)
       rb-fsevent (~> 0.10, >= 0.10.3)
       rb-inotify (~> 0.9, >= 0.9.10)
-    loofah (2.8.0)
+    loofah (2.9.0)
       crass (~> 1.0.2)
       nokogiri (>= 1.5.9)
     mail (2.7.1)
@@ -192,7 +182,14 @@ GEM
       activesupport (>= 4.0)
       sprockets (>= 3.0.0)
     sqlite3 (1.4.2)
-    thor (1.0.1)
+    stimulus_reflex (3.4.1)
+      cable_ready (>= 4.5)
+      nokogiri
+      rack
+      rails (>= 5.2)
+      redis
+    thor (1.1.0)
+    thread-local (1.1.0)
     tilt (2.0.10)
     turbolinks (5.2.1)
       turbolinks-source (~> 5.2)
@@ -237,7 +234,7 @@ DEPENDENCIES
   selenium-webdriver
   spring
   sqlite3 (~> 1.4)
-  stimulus_reflex (~> 3.4)!
+  stimulus_reflex (~> 3.4)
   turbolinks (~> 5)
   tzinfo-data
   web-console (>= 4.1.0)

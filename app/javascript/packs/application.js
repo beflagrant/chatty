@@ -23,6 +23,8 @@ CableReady.DOMOperations['logicalSplit'] = detail => {
   CableReady.DOMOperations[detail.operation]({
     element: detail.element,
     html: html,
+    ...detail.additionalOptions
   })
 }
+
 import "controllers"
