@@ -11,9 +11,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;700&display=swap" rel="stylesheet">
     <%= turbo_include_tags %>
     <%= stimulus_include_tags %>
+
+    <style>
+      <%= yield :custom_style %>
+    </style>
   </head>
 
-  <body class="mx-auto h-screen bg-beige">
+  <body class="mx-auto h-screen bg-beige" data-viewer="<%= current_user&.id %>">
     <header class="text-center p-2 bg-primary font-bold"><%= link_to "CHATTY", "/" %></header>
     <%= yield %>
   </body>

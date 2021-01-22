@@ -1,3 +1,37 @@
+<% content_for :custom_style do %>
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] {
+  text-align: right;
+  align-self: flex-end;
+  justify-content: flex-end;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] > div {
+  --tw-bg-opacity: 1;
+  --tw-text-opacity: 1;
+  background: rgba(217,241,255,var(--tw-bg-opacity));
+  color: rgba(30, 58, 138, var(--tw-text-opacity));
+}
+
+.action-block {
+  display: none;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
+  display: inline;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .info-block {
+  flex-direction: row-reverse;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .info-block span {
+  margin-left: 0.5rem;
+  margin-right: 0rem;
+}
+
+
+<% end %>
+
 <%= turbo_stream_from @room %>
   <div class="text-center p-2 bg-purple-100 text-sm shadow-lg relative">
     <b class="uppercase"><%= @room.name %>:</b>
