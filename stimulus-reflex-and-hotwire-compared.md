@@ -4,66 +4,71 @@ by Jonathan Greenberg, Ben Vandgrift
 
 ## Introduction
 
-At [Flagrant](http://beflagrant.com), we recently began designing a chat-centered product. As we were reaching for React, Basecamp dropped [hotwire](https://hotwire.dev/). This gave us pause--by and large, React includes a lot of overhead, and some members of the team make an unpleasant face when React gets mentioned.
+At [Flagrant](http://beflagrant.com), we recently began designing a chat-centered product. As we were reaching for React, Basecamp dropped [Hotwire](https://hotwire.dev/). This gave us pause--by and large, React includes a lot of overhead, and some members of the team make an unpleasant face when React gets mentioned.
 
 We decided to take a step back and examine the state of the art in the Reactive Rails world. Would Hotwire get us where we needed to go? Were there other reactive frameworks in wide use that we hadn't considered?
 
 ### Reactive Rails?
 
-There is a  movement in the Rails community to abandon the single page app (SPA) backed by web-based services (API) pattern and replace it with productive and performant ways to create apps in Rails that satisfy those needs. For Rails enthusiasts, productivity can be increased by requiring less custom code, and less JavaScript to write and debug.
+There is a movement in the Rails community to abandon the single page app (SPA) backed by web-based services (API) pattern and replace it with productive and performant ways to create apps in Rails that satisfy those needs. For Rails enthusiasts, productivity can be increased by requiring less custom code, and less JavaScript to write and debug.
 
 If you'd like a short primer on where these notions come from, we provide a broader context [here](https://beflagrant.com/blog/article-name).
 
-In this next bit, we'll talk about reactive programming (and functional reactive programming) generally, and what reactive Rails means specifically. First however, let's roll forward through time, shall we? (If you don't want the recap just the crunchy bits, feel free to <a href="#crunch">skip ahead</a>.)
+### Motivations
 
-When developing a web-based application in Rails, there have been a variety of approaches, informed by available horsepower, current technology and trends within development communities. Traditional, vanilla Rails applications (pre-1.0, circa 2004) serviced HTTP requests and responded with rendered HTML. Few Rails developers build applications like this 17 years later, but that's the Rails baseline: request a page/resource, get a fully-rendered HTML response. Navigate to a different page in your browser, submit a form, get another fully-rendered page including your results. Lather, rinse, repeat.
+The ever-changing landscape of software development rewards personalities that love to learn new things. This has an obvious drawback: the desire to _use_ that new thing as soon as it appears, even if it's not fully baked. Whether or not to implement a solution using the new and shiny is an exercise in judgement (and restraint). We have to evaluate each new technology in a few ways:
 
-While the first draft spec of the XMLHttpRequest object landed in 2006, early technologies served similar purposes. The term AJAX (as Asynchronous JavaScript and XML) had been in use since early 2005. Very quickly after some standards allowed for cross-browser compatability, we began to see applications designed with some asynchrony---a user causes an event (say, by clicking a 'submit' or 'search' button) and an async request is sent to a Rails endpoint returning HTML or XML data[^1], which then causes an adjustment in the page, driven using some JavaScript (JS).
+* fitness of purpose
+* support and adoption
+* stability of core assumptions
+* security
+* introduced uncertainty
+* effect on development speed
+* happiness
 
-Initially, this could be effected with hand-coded JS using its included functions or using the JQuery library. Starting at version 3.0 (mid-2010), these facilities began to be baked into Rails as 'unobtrusive javascript' (think `:remote => true`). When used as initially intended, this yielded endpoints that could serve both XML or HTML depending on what is sought (`things[.json]/77`), or just as commonly a mish-mash of endpoints for rendered pages (`/things/77`) and data endpoints (`/api/things/77`) for data. Better, but not great.
+These are the factors in our minds as we evaluated these two technologies. Staying on top of the state of the art is a worthwhile endeavor. Actually _using_ the state of the art means asking difficult questions. A decision to make use of a new things should only come after these questions have satisfactory answers.
 
-As networks and browsers and their underlying hardware became faster (including mobile hardware--the first iPhone was release in 2007), more functionality began living in the browser, with increasingly complex frameworks to support it[^2]. Data was beginning to be shared across consistently across views.
+### Overview
 
-The question naturally arises: why not put the entire application in the browser? In 2010, AngularJS (1.0) was released by Google. A decent first swing, but the long-term winner was React, released in 2013. Since then, the app-in-the-browser idea, with an API somewhere to handle data requests has been increasing in popularity. Why did this become a trend in developing web-based applications? Because it was possible, and because quite a few developers reasoned that 'if Facebook is doing it this way, it must be the right way'[^3].
+Our process, in brief:
 
-As a result, for the past several years, developers have reached for [`create-react-app`](https://create-react-app.dev/) to start a new project, or [Vue.js](https://vuejs.org/) or similar frameworks, and many organizations just accept that a lot of the complexity of our application is going to live in JavaScript or Typescript. Individual developers consider building furniture for a living or perhaps raising vegetables.
+First, we built a simple chat prototype in the vanilla Rails way. From there, we plugged Hotwire into the prototype to see how well it fit our purpose. In short, we bumped into some walls and it didn't meet our needs out of the box. This was unsurprising given its shiny newness.
 
-Part of the appeal of this approach is the illusion of easy-to-get-started tooling that gives you a rapid development environment and you can get to market more quickly. Also, the appeal of easy-to-hire and inexpensive JS developers fresh from a code boot camp where they learned how to build React apps and deploy them on Netlify and communicate with a Mongo backend. It appeals to CIOs when they are considering the budget handed to them by CFOs. These conversations almost never consider the considerable cost to send these young Jedi to the Dagobah system to complete their training.
+That prompted us to look for another solution in the same vein. We decided on StimulusReflex](https://docs.stimulusreflex.com/) and its underlying library [CableReady](https://cableready.stimulusreflex.com/), based on its growth in popularity and recommendations over the past year. This framework boasts more thorough documentation and has had time in the community to get banged around some.
 
-A perceived demand among users to have a 'seamless experience', along with an actual demand for a snappy response to actions also drives the adoption of the SPA/API application, though neither of those things are guaranteed--or even more likely--using this application model.
+We found Stimulus Reflex to be a much better fit for our purposes. It has some drawbacks: the learning curve is non-trivial, and we ended up writing more JavaScript than we'd hoped.
 
-Given that we've been using this approach for a decade now, has it improved the quality of web-based applications? Are they snappier? Are there seamless experienced to be had? We have enough evidence now to understand that the SPA approach isn't any kind of panacea, and if not then why continue it?
+The rest of this post will be a deeper dive into those evaluations.
 
-Questions like these, along with the obvious productivity gains from being able to write an application (mostly) in a single language, developed by a single team have revived an interest among many developers in the reactive programming model and the frameworks built to support it. We can see the beginnings of this surrounding the release of ActionCable in Rails 5 (2015), and coming into its own with libraries like CableReady (2017) in the Rails world, and Phoenix LiveView (mid-2019) in Elixir, among many, many others. (The term 'Reactive Rails' would come somewhat later[^4].)
+## Getting Started
 
-To get this out of the way, reactive programming isn't new[^5]. The bones of this approach appear in modern software languages as early as 2005, and the Intel 8259 Programmable Interrupt Controller (PIC) was introduced in 1976. At it's core, reactive programming concerns itself with reacting asynchronously to messages delivered over a data stream.
+We have two goals in mind: first, to find a solution that provides the functionality we need from a single page app without the associated overhead. Second, we want to add tools to our belt making this kind of activity easier in future projects.
 
- Because of how reactive programming tends to be structured, a communication r
+Our specific application needs an interactive communication channel between users, with advanced chat and file/photo sharing capabilities encapsulated into a single view. Think of an advanced group text and you've got the idea. Required features for our prototype:
 
-Reactive Rails applications (and other reactive programming efforts) tend to use connected data streams (as opposed to disconnected and stateless HTTP requests) to push messages back and forth between the browser and the service. With WebSockets, as implemented by ActionCable and the libraries layered atop it, this becomes possible in Rails without too much heavy lifting. By connecting once (per stream) and keeping the connection open, the connection/disconnection overhead is recovered. By keeping the messages small and their handling simple and concise, the computational and memory overhead is recovered. Since it's always connected, the message exchange time decreases, sometimes dramatically.
+1) Any user must be able to easily differentiate their own messages in the view
+2) Any user must be able to edit only their own messages
+3) Every user sees updates in real time
 
-The core idea: a lightweight comms piece in the browser creates a connection to the server. That connection persists throughout the lifespan of the page. Browser and server share a common message protocol, and each side _reacts_ to the message it receives, often in the form of an action to take, incoming data, or other (preferably atomic) change[^6]. Typically, the server will react to requests for data or changes to data, and the client will react by updating the contents of the browser, but simple client-server interaction is only the beginning.
+This is a small subset of features we felt would enable us to compare and contract the pros and cons of Hotwire and Stimulus Reflex in relative isolation. We kept the problem domain small enough that we wouldn't lose focus, but complex enough to ensure we pushed some of the edges of these tools.
 
-Especially if you're about to build a selective multicast communication system.
+Hotwire and Stimulus Reflex appear to be roughly aligned philosophically and rely on similar underlying tools (Rails, ActionCable, and Stimulus), and so we can approach an apples to apples comparison between these two.
 
-[STOP]
+### Bare Bones
 
-Hotwire is Basecamp's latest contribution to a growing movement in the Rails community to abandon the SPA philosophy and find productive and performant ways to create applications that rely on Rails as more than just an api backend. 
+To form a foundation for both experiments, we built a lean, vanilla Rails application, intending to implement Stimulus Reflex and Hotwire solutions in separate branches. You can check out the base code for [chatty here](https://github.com/beflagrant/chatty). We built it using Rails 6.1 and Ruby 2.7.2.
 
-I will not spend too much time explicating all the reasons and justifications for moving back to a more backend centric approach to web applications since others have already done that quite well (you can refer to [this guide](https://github.com/obie/guide-to-reactive-rails) for a pretty comprehensive list of resources). Suffice it so that while javascript is invaluable for creating a more dynamic browser experience for clients that should not nor need not be at the cost of the development ease and maintainability of the application. Keeping the logic and state of a website in one place is just good basic software principles and for Ruby programmers that is likely to be on the server side. 
+For models, we limited ourselves to three: User, Room, and Message. We've left out real authentication, and simply track the current user using a `user_id` in the session. Because we appreciate some style, we also incorporated [Tailwind CSS](https://tailwindcss.com/). We opted for Webpacker over Sprockets and the asset pipeline. Setup will seed a single room in the database for everyone to share.
 
+The result? A basic chatroom experience:
 
-Why are we doing this?
-Stimulus Reflex - established
-Hotwire/Turbo - new hotness
-With a new reflexive offering, it’s a good time to compare to existing options,
-and see whether (for established SR users) switching/exploring is a good idea,
-and (for all new adoption) which framework is best in which situations.
+[SCREEN SHOT]
 
-Quirk 1: `./bin/rails hotwire:install` yielded a missing gem: `redis`. Had to
-re-run `bundle install` but then all was well.
+Of course, this bare app requires a full page refresh when submitting new content, and doesn't update other users' views.
 
-## Getting Started <a id="crunch"/>
+At this point, we have a blank canvas from which to integrate both solutions and see where we are. We'll start with Hotwired.
+
+QUESTIONS TO ANSWER:
 
 How difficult to add to a new project?
 How easy to integrate into an existing project? (Given webpacker vs sprockets.)
@@ -73,117 +78,66 @@ Special concern: for an existing API driven project w/ a React front end, how
 What is the learning curve of each project? How good is the documentation?
 How fast can one get to a minimal/prototypical implementation?
 
-## Specific Features
 
-This starts the conversation on what is good for what type of application, and
-where the trade-offs live.
-Hotwire / Turbo
-Stimulus Reflex
+### First Impression: Hotwired
 
-GOTCHA: session data doesn't go over the wire
+[NEEDS A BUNCH OF WORK]
 
-GOTCHA: only one version of the partial is broadcast -- the user display
-handling needs to be alive on the client (browser)
-
-NOTE: multi-user applications become more difficult in this case, but the
-competing solution was a cable-ready solution with multiple broadcast branches
-
-## Active Development / Support
-
-Current issues, lifetime contributions, active community, backing and likely
-adoption based on current understanding.
-Experience Report / Observations
-Describe our use case, and why we were having this discussion with some
-particulars, our goals from a user experience and implementation point of view.
-
-Describe what we chose and why we chose it for this use case, with a YMMV.
-
-## Conclusions
-
-Summary of comparisons, recommendations for use cases.
-
-## References
-
-- Hotwire repo: [https://github.com/hotwired/hotwire-rails](https://github.com/hotwired/hotwire-rails)
-- Hotwire tutorial on GoRails: [https://gorails.com/episodes/hotwire-rails](https://gorails.com/episodes/hotwire-rails)
-
-## First Attraction
-
-
-
-## First Taste
-So after watching the first splash of tantalizing Hotwire videos ([GoRails hotwire-rails](https://gorails.com/episodes/hotwire-rails),  [Hotwire Demo](https://www.youtube.com/watch?v=eKY-QES1XQQ&ab_channel=GettingReal)) it was time to see how well it worked with our simple chat app prototype.
+After watching the first-out (and detail-light) Hotwire videos ([GoRails hotwire-rails](https://gorails.com/episodes/hotwire-rails),  [Hotwire Demo](https://www.youtube.com/watch?v=eKY-QES1XQQ&ab_channel=GettingReal)) it was time to see how well it worked with our simple chat app prototype.
 
 Well, I was a bit disappointed but not too surprised when I started bumping into some challenges since this technology is freshly released and though obviously being exercised by Basecamp with their new [Hey email service](https://hey.com/) it has not been battle tested by the masses until now. 
 
-## Second Thoughts
 While the basic Turbo Frame and Turbo Stream patterns work fine for simple use cases one needs to get creative for more complicated use cases. In our case we wanted new messages to appear different to different users and in particular the current user sending the message. Unfortunately, Turbo currently only supports sending one version of a partial over action cable turbo streams and the general advice is to find your own solutions using Stimulus in such cases (see [this issue](https://github.com/hotwired/turbo-rails/issues/47)). 
 
-Happily, that got me googling around to see what else was out there. Of course Hotwire is a bit too green for much content to be out there just yet but there were a lot of references to another great project called [CableReady](https://cableready.stimulusreflex.com/) and its child project but maybe better known [StimulusReflex](https://docs.stimulusreflex.com/). 
+### First Impression: Stimulus Reflex
 
-I guess I have been heads down lately because StimulusReflex was already spreading a big wake in recent years and especially the last few months. The SR team made their own impressive [twitter clone demo video](https://www.youtube.com/watch?v=F5hA79vKE_E&ab_channel=Hopsoft) earlier this year and GoRails [started advocating](https://gorails.com/episodes/stimulus-reflex-basics) for this powerful tool for creating great user interfaces without relying on heavy front end frameworks months before the build up to Hotwire. Moreover, the documentation and instrumentation for CR/SR seem quite mature and the dynamic team is surprisingly accessible, friendly and generous on their [Discord Channel](https://discord.gg/XveN625). 
+StimulusReflex had been making a splash in recent years and especially the last few months: GoRails created an [introductory video](https://gorails.com/episodes/stimulus-reflex-basics) in mid-April of 2020, and less than two weeks later the SR team released a [twitter clone demo video](https://www.youtube.com/watch?v=F5hA79vKE_E&ab_channel=Hopsoft) of their own. Both videos promote using SR rather than heavy front-end frameworks. It would be eight months between these videos and the release of Hotwire.
 
-## Taste Test
-So now with two great options for prototyping our chat app in the running we had a difficult choice to make. Ultimately, in an ideal world there is no need to choose. These technologies are certainly aligned philosophically and rely on very similar underlying tools (Rails, Stimulus and ActionCable to name some obvious examples). Most likely over time it will become clear which use cases beacon to their respective tools in the box. Nevertheless, when dealing with applying new technologies it often helps to isolate and focus learning so as to not get too overwhelmed and confused. 
+The documentation and instrumentation for CR/SR seem quite mature and the development team is surprisingly accessible, friendly and generous on their [Discord Channel](https://discord.gg/XveN625). This made integrating Stimulus Reflex straightforward, with a good human fallback if any hiccups happen.
 
-To get a better perspective on our options we decided to build a small subset of a chat application to compare and contrast the pros and cons of Hotwire and CR/SR. Of course you can already find plenty of chat example projects out there but there is nothing like writing code yourself. Moreover we wanted to make sure we pushed some of the edges of these tools by implementing some pretty basic chat features, namely:  
+At its core Stimulus Reflex is a set of patterns that provides some glue between Stimulus js and CableReady. Like Hotwire, CableReady provides a mechanism to update the DOM by sending mostly HTML and operations to the client; however, unlike Hotwire, CableReady solely depends on WebSockets[^fn1]  for communication while Hotwire only uses ActionCable for its Turbo Stream feature. It is also worth noting that StimulusReflex leans on a cool js project [morphdom](https://github.com/patrick-steele-idem/morphdom) for some of its more advanced manipulations of the DOM. 
 
-1) Users being able to differentiate their messages in a conversation
-2) Users being able to edit their message and have them update in multiple streams. 
-
-## Bare Bones
-The first step was to create a vanilla rails app with some minimal modeling and rough interface to branch off of. You can check out the base code for [chatty here](https://github.com/beflagrant/chatty). It is a rails 6.1 app on ruby 2.7.2 with just three models User, Room, Message. There is no real authentication but just a simple tracking of the current user using a session user_id. We used tailwind for css and stuck with Webpacker for assets thus far. There is just one room seeded for the database. Just using some basic restful crud for messages you get this basic looking chatroom experience: 
-
-Of course this primitive interface requires a full page refresh for each new message submit and obviously does not update the message stream for any other clients watching the room. 
-
-## Quick Reflexes
-
-At its core Stimulus Reflex is a set of patterns that provides some glue between Stimulus js and CableReady. Like Hotwire, CableReady provides a mechanism to update the DOM by sending mostly HTML and operations to the client; however, unlike Hotwire, CableReady solely depends on WebSockets (ActionCable by default though [integration with AnyCable](https://docs.stimulusreflex.com/deployment#anycable) is possible as well) for communication while Hotwire only uses ActionCable for its Turbo Stream feature. It is also worth noting that StimulusReflex leans on a cool js project [morphdom](https://github.com/patrick-steele-idem/morphdom) for some of its more advanced manipulations of the DOM. 
-
-Installation of StimulusReflex is pretty trivial following their docs but basically the steps were: 
+Installation of StimulusReflex is pretty trivial following their docs but basically the steps were:
 
 ```sh
 bundle add stimulus_reflex
 bundle exec rails stimulus_reflex:install
-
-rails g stimulus_reflex Message
 ```
 
-The first test in our app was to see how StimulusReflex did with broadcasting new messages to all client streams. This is where the fun magic of ActionCable WebSockets transform our boring one-way chatroom into a multi-person realtime conversation. Of course, as mentioned earlier, the simple broadcast of identical messages to all room members is quite trivial both for StimulusReflex and Hotwire so we dug right in to figure out a way to broadcast different html to different users. 
+With Stimulus Reflex installed, we can move on to integrating it with our bare bones application.
 
-We got a tip almost immediately from the attentive support on the SR Discord channel to check out [The Logical Splitter Example](https://cableready.stimulusreflex.com/leveraging-stimulus#example-3-the-logical-splitter) in the docs. At a later point we were also advised to explore CableReady's extensible [Custom Operations](https://cableready.stimulusreflex.com/customization#custom-operations). Following these two ideas we came up with this clever combination: 
+### Integrating Stimulus Reflex
 
-```javascript
-// app/javascript/packs/application.js
+The model we'll be using Stimulus Reflex to manage is the Message, so we first need to generate the reflex classes we'll build on:
 
-import CableReady from 'cable_ready'
-
-CableReady.DOMOperations['logicalSplit'] = detail => {
-  const crId = document.querySelector('meta[name="cable_ready_id"]').content
-  const custom = Object.entries(detail.customHtml).find(pair => pair[0].includes(crId)
-  const html = custom ? custom[1] : detail.defaultHtml
-  CableReady.DOMOperations[detail.operation]({
-    element: detail.element,
-    html: html,
-  })
-}
-import "controllers"
+```sh
+rails g stimulus_reflex message
 ```
 
-```ruby
+This will create `application_controller.js` and `message_controller.js` files in `app/javascript/controllers`, and create `application_reflex.js` and `message_reflex.js` in `app/reflexes`. We'll put the SR-specific JavaScript in those files.
+
+The first test in our app was to see how StimulusReflex did with broadcasting new messages to all client streams. This is where the fun magic of ActionCable WebSockets transform our boring one-way chatroom into a multi-person realtime conversation. Of course, as mentioned earlier, the simple broadcast of identical messages to all room members is quite trivial both for StimulusReflex and Hotwire so we dug right in to figure out a way to broadcast different html to different users.
+
+We got a tip almost immediately from the attentive support on the SR Discord channel to check out [The Logical Splitter Example](https://cableready.stimulusreflex.com/leveraging-stimulus#example-3-the-logical-splitter) in the docs. At a later point we were also advised to explore CableReady's extensible [Custom Operations](https://cableready.stimulusreflex.com/customization#custom-operations). Following these two ideas we came up with this solution:
+
+First, we prepare our application layout. Inserting the user's id as a `meta` tag in the head of the layout will provide us with a reference we will use at later:
+
+```erb
 <%# in app/views/layouts/application.html.erb %>
 
 <%= tag(:meta, name: :cable_ready_id, content: current_user&.id) %>
 ```
 
+In our `MessageReflex` class, we specify that when created via reflex, the message should broadcast two html snippets, one for the html that everyone in the room will see (`default_html`), one snippet that is rendered when the current user is the author of the message (`custom_html`):
+
 ```ruby
-# app/reflexes/message_reflex.rb
+# in app/reflexes/message_reflex.rb
   delegate :current_user, to: :connection
    
   def create
     message = room.messages.create(comment: element.value, user: current_user)
 
-    message_broadcast(message, "##{dom_id(@room)}", :insertAdjacentHtml)
+    message_broadcast(message, "##{dom_id(room)}", :insertAdjacentHtml)
     morph :nothing
   end
   
@@ -197,12 +151,66 @@ import "controllers"
       }
     ).broadcast_to(room)
   end
+
+  # ...
+
+  def room
+    @room ||= Room.find(element.dataset[:room_id])
+  end
 ```
-And the channel setup as outlined in the manual: 
+
+We can see that the channel the broadcast will use is `RoomChannel`, which we need to define. We're also providing a selector using `dom_id(room)` as the target html element of the broadcast.
+
+The `StimulusReflex::Reflex class`, parent to `ApplicationReflex`, parent to our `MessageReflex` provides `element`, representing the html element that triggered the reflex. That element's dataset (all the `data-*` attributes of that element) includes a `:room_id`, allowing us to look up the specific Room we need.
+
+As written, `RoomChannel` is boilerplate stuff. The `stream_for` indicates that for any given Room, a channel exists:
+
+```ruby
+# app/channels/room_channel.rb
+class RoomChannel < ApplicationCable::Channel
+  def subscribed
+    stream_for Room.find(params[:id])
+  end
+end
+```
+
+We'll add the Room's `id` to a `div` tag in our view using `dom_id(@room)` so the channel knows which element to target as a container. We also include the room's `id` in `data-room-id-value=`, which makes it a part of the element's dataset:
+
+```erb
+<%# in app/views/rooms/show.html.erb %>
+<div id="<%= dom_id(@room) %>" class="pt-4 mr-4 flex flex-col"
+    data-controller="room"
+    data-room-id-value=<%= @room.id %>>
+  <%= render @room.messages %>
+</div>
+```
+
+Specifically, within the channel RoomChannel, the broadcast targets the `logical_split` custom operation. We define that custom operation in our `application.js` file:
+
 ```javascript
-//app/javascript/controllers/room_controller.js
-                                                                         
-import { Controller } from "stimulus"
+// in app/javascript/packs/application.js
+import CableReady from 'cable_ready'
+
+// note the change in case convention!
+// logicalSplit in js <-> logical_split in ruby
+CableReady.DOMOperations['logicalSplit'] = detail => {
+  const crId = document.querySelector('meta[name="cable_ready_id"]').content
+  const custom = Object.entries(detail.customHtml).find(pair => pair[0].includes(crId)
+  const html = custom ? custom[1] : detail.defaultHtml
+  CableReady.DOMOperations[detail.operation]({
+    element: detail.element,
+    html: html,
+  })
+}
+import "controllers"
+```
+
+Finally we set up the channel as outlined in the manual using a room controller:
+
+```javascript
+// in app/javascript/controllers/room_controller.js
+
+import { Controller } from 'stimulus'
 import CableReady from 'cable_ready'
 
 export default class extends Controller {
@@ -225,17 +233,14 @@ export default class extends Controller {
   }
 }
 ```
-```ruby
-class RoomChannel < ApplicationCable::Channel
-  def subscribed
-    stream_for Room.find(params[:id])
-  end
-end
-```
 
-So far this is just CableReady working its magic allowing an html loaded payload to be broadcasted to all subscribers to a particular room channel. Normally you can rely on the diverse and comprehensive array of [operations](https://cableready.stimulusreflex.com/reference/operations) that CableReady provides out of the box to manipulate the DOM and interact with the browser. Our custom operation allows for tailored signature that augments the base operations allowing us to target different users with different html that is then matched by their meta tag user_id on the front end. 
+Simple, right?
 
-One neat feature of CableReady is that is can be used almost [anywhere](https://cableready.stimulusreflex.com/cableready-everywhere) in your Rails app and indeed it would have been fine to leave the operation call as a regular form submit to the controller: 
+In many circumstances, there's no need to build all of this custom code. CableReady provides a diverse and comprehensive array of [operations](https://cableready.stimulusreflex.com/reference/operations) out of the box to manipulate the DOM and interact with the browser. We built a custom operation specifically because we wanted different visuals to highlight messages posted by the current user, which _doesn't_ happen out of the box. (Recall that in our Hotwire implementation, we did this using CSS.)
+
+[THIS IS AS FAR AS I'VE GOTTEN]
+
+One neat feature of CableReady is that is can be used almost [anywhere](https://cableready.stimulusreflex.com/cableready-everywhere) in your Rails app and indeed it would have been fine to leave the operation call as a regular form submit to the controller:
 
 ```ruby
 class MessageController < ApplicationController
@@ -254,9 +259,9 @@ class MessageController < ApplicationController
     cable_ready.broadcast_to(@room)
   end
 end
-``` 
+```
 
-with our original form unchanged: 
+with our original form unchanged:
 
 ```ruby
 <div class="bg-primary bg-opacity-90 w-full p-4">
@@ -272,7 +277,8 @@ with our original form unchanged:
 </div>
 ```
 
-However, for fun, practice and code organization we moved the logic into a reflex and were now able to demonstrated submitting a comment without a form at all: 
+However, for fun, practice and code organization we moved the logic into a reflex and we're now able to demonstrate submitting a comment without a form at all:
+
 ```ruby
 <div class="bg-primary bg-opacity-90 w-full p-4" data-controller="message">
   <div class="flex">
@@ -383,8 +389,49 @@ You will also notice the reuse of the message_broadcast method in the MessageRef
     if(event.key === "Enter") { this.stimulate("Message#update", event.target) }
   }
 ```
+
 As you can see reflexes can also be called from the client side so that hitting enter triggers an update from the message comment edit text area box. 
 
-With this we have nowhere near exhausted the capabilities of CableReady and StimulusReflex but just with these few features given a pretty impressive demonstration of the potential nonetheless. 
+With this we have nowhere near exhausted the capabilities of CableReady and StimulusReflex but just with these few features given a pretty impressive demonstration of the potential nonetheless.
+
+## Features, Compared
+
+This starts the conversation on what is good for what type of application, and
+where the trade-offs live.
+Stimulus (Common)
+Hotwire / Turbo
+Stimulus Reflex
+
+GOTCHA: session data doesn't go over the wire
+
+GOTCHA: only one version of the partial is broadcast -- the user display
+handling needs to be alive on the client (browser)
+
+NOTE: multi-user applications become more difficult in this case, but the
+competing solution was a cable-ready solution with multiple broadcast branches
+
+## Active Development / Support
+
+Current issues, lifetime contributions, active community, backing and likely
+adoption based on current understanding.
+Experience Report / Observations
+Describe our use case, and why we were having this discussion with some
+particulars, our goals from a user experience and implementation point of view.
+
+Describe what we chose and why we chose it for this use case, with a YMMV.
+
+## Conclusions
+
+Summary of comparisons, recommendations for use cases.
+
+## References
+
+- Hotwire repo: [https://github.com/hotwired/hotwire-rails](https://github.com/hotwired/hotwire-rails)
+- Hotwire tutorial on GoRails: [https://gorails.com/episodes/hotwire-rails](https://gorails.com/episodes/hotwire-rails)
+
+#### Quick Reflexes
 
 
+## Footnotes
+
+[fn1]: Stimulus Reflex uses ActionCable by default. [Integration with AnyCable](https://docs.stimulusreflex.com/deployment#anycable) is possible as well.
