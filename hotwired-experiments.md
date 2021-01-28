@@ -1,4 +1,8 @@
 
+# Hotwired 
+
+(NOTE: keeping the stimulus reflex stuff in here for parity in structure, will delete)
+
 QUESTIONS TO ANSWER:
 
 How difficult to add to a new project?

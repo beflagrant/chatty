@@ -1,25 +1,15 @@
 
-QUESTIONS TO ANSWER:
+# A Brief Study of Stimulus Reflex
 
-How difficult to add to a new project?
-How easy to integrate into an existing project? (Given webpacker vs sprockets.)
-What dependencies does it bring to the party?
-Special concern: for an existing API driven project w/ a React front end, how
-‘expensive’ is it to convert?
-What is the learning curve of each project? How good is the documentation?
-How fast can one get to a minimal/prototypical implementation?
+This post continues our exploration of Reactive Rails tools with [StimulusReflex](https://docs.stimulusreflex.com/) and its underlying library [CableReady](https://cableready.stimulusreflex.com/). This is the (third?) post in the series--if you need to catch up you can:
 
-### First Impression: Hotwired
+* [Getting to Reactive Rails]()
+* [Reactive Rails from Bare Bones]()
+* THIS THING
+* HOTWIRED THING
+* COMPARISION, CONTRAST, AND CONCLUSIONS
 
-[NEEDS A BUNCH OF WORK]
-
-After watching the first-out (and detail-light) Hotwire videos ([GoRails hotwire-rails](https://gorails.com/episodes/hotwire-rails),  [Hotwire Demo](https://www.youtube.com/watch?v=eKY-QES1XQQ&ab_channel=GettingReal)) it was time to see how well it worked with our simple chat app prototype.
-
-Well, I was a bit disappointed but not too surprised when I started bumping into some challenges since this technology is freshly released and though obviously being exercised by Basecamp with their new [Hey email service](https://hey.com/) it has not been battle tested by the masses until now. 
-
-While the basic Turbo Frame and Turbo Stream patterns work fine for simple use cases one needs to get creative for more complicated use cases. In our case we wanted new messages to appear different to different users and in particular the current user sending the message. Unfortunately, Turbo currently only supports sending one version of a partial over action cable turbo streams and the general advice is to find your own solutions using Stimulus in such cases (see [this issue](https://github.com/hotwired/turbo-rails/issues/47)). 
-
-### First Impression: Stimulus Reflex
+## First Impression
 
 StimulusReflex had been making a splash in recent years and especially the last few months: GoRails created an [introductory video](https://gorails.com/episodes/stimulus-reflex-basics) in mid-April of 2020, and less than two weeks later the SR team released a [Twitter clone demo video](https://www.youtube.com/watch?v=F5hA79vKE_E&ab_channel=Hopsoft) of their own. Both videos promote using SR rather than heavy front-end frameworks. It would be eight months between these videos and the release of Hotwire.
 
@@ -296,11 +286,12 @@ module MessageHelper
 end
 ```
 
-As a result, viewers will be able to differentiate between message they've sent and those sent by others regardless of whether or not they're receiving messages as a result of a page refresh or missives from the channel they're subscribed to.
+As a result, viewers will be able to differentiate between message they've sent and those sent by others regardless of whether or not they're receiving messages as a result of a page refresh or updates from the channel they're subscribed to.
 
 We also now can see our remaining edit/update reflexes setup in the view partial which respectively call the falling actions in our MessageReflex: 
 
 ```ruby
+# in app/reflexes/MessageReflex
   def edit
     @message = Message.find(element.dataset[:id])
     @editing = true
@@ -315,51 +306,25 @@ We also now can see our remaining edit/update reflexes setup in the view partial
   end
 ```
 
-Looks strangely familiar; almost like a controller you might say? The edit reflex is using a page morph which will use the default StimulusReflex controller to do a full morph of the current user's html using the efficient diffing logic of morphdom js with lightening speed and no flashes. Our comment is immediately transformed into a text field for in place editing that users have come to expect from modern web applications. This is the closest we got to the traditional use of StimulusReflex in which a user page interaction creates an immediate effect on the page; however, notice that all our instructions are coming the server side!
+Looks strangely familiar; almost like a controller? When the `edit` button is clicked, the triggered reflex renders the partial and sends the update through the channel. On the client side, the default StimulusReflex controller (JS) uses `morphdom` to efficiently diff and apply the new/updated DOM elements. As a result, users see the kind of snappy edit-in-place field they've come to expect in modern web applications. Most of the heavy lifting here is done by StimulusReflex itself, without our intervention. This may be the closest we came to the kind of use case StimulusReflex is designed to simplify.
 
-You will also notice the reuse of the message_broadcast method in the MessageReflex#update action, this time using the CableReady outerHtml method which will match and replace the message by dom_id for all subscribers to the room channel. And a final little gesture of Stimulus, this time a data-action for the keyup event which calls this action in our js controller: 
+The `update` method also makes use of `message_broadcast`, this time using the CableReady `:outerHtml` directive. This matches the message using the `dom_id` and replaces the content for all subscribers to the room channel. We add some final polish by 'stimulating' the `Message#update` reflex when the user hits the 'Enter' key. We add this to the JS controller:
 
 ```javascript
+  // in app/javascript/controllers/message_controller.js
   keyup(event) {
     if(event.key === "Enter") { this.stimulate("Message#update", event.target) }
   }
 ```
 
-As you can see reflexes can also be called from the client side so that hitting enter triggers an update from the message comment edit text area box. 
+## Conclusion
 
-With this we have nowhere near exhausted the capabilities of CableReady and StimulusReflex but just with these few features given a pretty impressive demonstration of the potential nonetheless.
+In the first post of this series, we tried to provide some background on web application technologies, for context on why 'Reactive Rails' is having a moment. (If you missed it, you can [read it here](#).
 
-## Features, Compared
+In this brief study, we've exercised some of the core and custom capabilities of CableReady and StimulusReflex, at least enough for the team at Flagrant to form some early opinions. We have not remotely plumbed the depths of features and capability these libraries can provide, but it's a thorough start.
 
-This starts the conversation on what is good for what type of application, and
-where the trade-offs live.
-Stimulus (Common)
-Hotwire / Turbo
-Stimulus Reflex
+In the next post in this series, we'll give Hotwire the same treatment. Finally, we'll compare and contrast the two, hopefully providing some useful information to other developers looking for a good fit.
 
-GOTCHA: session data doesn't go over the wire
+## Footnotes
 
-GOTCHA: only one version of the partial is broadcast -- the user display
-handling needs to be alive on the client (browser)
-
-NOTE: multi-user applications become more difficult in this case, but the
-competing solution was a cable-ready solution with multiple broadcast branches
-
-## Active Development / Support
-
-Current issues, lifetime contributions, active community, backing and likely
-adoption based on current understanding.
-Experience Report / Observations
-Describe our use case, and why we were having this discussion with some
-particulars, our goals from a user experience and implementation point of view.
-
-Describe what we chose and why we chose it for this use case, with a YMMV.
-
-## Conclusions
-
-Summary of comparisons, recommendations for use cases.
-
-## References
-
-- Hotwire repo: [https://github.com/hotwired/hotwire-rails](https://github.com/hotwired/hotwire-rails)
-- Hotwire tutorial on GoRails: [https://gorails.com/episodes/hotwire-rails](https://gorails.com/episodes/hotwire-rails)
+[fn1]: Stimulus Reflex uses ActionCable by default. [Integration with AnyCable](https://docs.stimulusreflex.com/deployment#anycable) is possible as well.
