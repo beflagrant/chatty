@@ -1,7 +1,40 @@
 
-# Hotwired 
+# A Brief Study of Hotwire
 
-(NOTE: keeping the stimulus reflex stuff in here for parity in structure, will delete)
+We continue our exploration of Reactive Rails tools with [Hotwire](https://hotwire.dev/). This is the fourth post in the series--if you need to catch up, you can:
+
+* [Getting to Reactive Rails]()
+* [Reactive Rails from Bare Bones]()
+* [A Brief Study of Stimulus Reflex]()
+
+In the post follosing this, we'll look at both of our chosen contenders. For now, we'll focus on Hotwire by its lonesome.
+
+Hotwire is an umbrella project that melds [Turbo](https://turbo.hotwire.dev/) and [Stimulus](https://stimulus.hotwire.dev). Turbo supersedes [Turbolinks](https://github.com/turbolinks/turbolinks), a long-time Rails standby for accelerating web view rendered on the server side. Turbo continues this feature set while adding _Turbo Frames_ and _Turbo Streams_. Turbo Frames allow you to create a component with independent functionality, somewhat similar to an `iframe` in concept. Turbo Streams provide a communication layer between your service and (among other things) the Turbo Frames using WebSockets or server-sent events (SSE).
+
+Let's dive in!
+
+## First Impression
+
+Our approach to Hotwire was similar to our approach to Stimulus Reflex: videos, documentation, then extend our bare chat application with our desired functionality. With Hotwire, we dug into the source a little bit more. This wasn't unexpected--while Hotwire includes Turbo as an extension to Turbolinks and Stimulus is no spring chicken, combining them together as Hotwire is a new approach and not much in the way of thorough guidance was available while we were experimenting.
+
+The pedigree here is non-trivial. Turbolinks was an early entry attempting to get the speed of the single-page application (SPA) without converting your entire front-end to JS. Like the early Rails 'unobtrusive JavaScript' approach, Turbolinks could integrate almost transparently. The Turbolinks approach is nearly a decade old at this point and predates React--though not AngularJS. Turbolinks 5 released with Rails 5, beginning a transition from CoffeeScript to TypeScript. Turbo completes this transition while adding new functionality in the same vein.
+
+Stimulus has been under development for 5 years, long enough for the Stimulus Reflex framework to have been built atop it and matured quite a bit. It bills itself as 'a JavaScript framework with modest ambitions'. Stimulus works via (JS) Controllers, declared in a `data-action=` attribute on an HTML element, using the quirky (`event->Controller#method`) syntax we saw briefly in our Stimulus Reflex experiment.
+
+Because the `data-actions` can be added to any element, it can seamlessly be added to a `turbo-frame` element. If the functionality of a Turbo Frame isn't quite enough, you can use Stimulus to augment--at least, that's the thinking.
+
+The components of the Hotwired umbrella are collected for installation in Rails under the [hotwire-rails](https://github.com/hotwired/hotwire-rails) gem. Installing using the instructions:
+
+```sh
+bundle add hotwire-rails
+bundle add redis # surprise!
+bin/bundle install
+bin/rails hotwire:install
+```
+
+Redis? Perhaps that shouldn't have been surprising, and the error messages alerting to its absence were clear.
+
+With Hotwire installed, we set about integrating it into our chat servce.
 
 QUESTIONS TO ANSWER:
 
@@ -13,32 +46,96 @@ Special concern: for an existing API driven project w/ a React front end, how
 What is the learning curve of each project? How good is the documentation?
 How fast can one get to a minimal/prototypical implementation?
 
-### First Impression: Hotwired
+## Integrating Hotwire
 
-[NEEDS A BUNCH OF WORK]
+To make this a little easier on your eyes, we'll remove the styling from the inline code here. If you want _all_ the deets, you can have a look at the [source code](https://github.com/beflagrant/chatty).
 
-After watching the first-out (and detail-light) Hotwire videos ([GoRails hotwire-rails](https://gorails.com/episodes/hotwire-rails),  [Hotwire Demo](https://www.youtube.com/watch?v=eKY-QES1XQQ&ab_channel=GettingReal)) it was time to see how well it worked with our simple chat app prototype.
+Recall our required features:
 
-Well, I was a bit disappointed but not too surprised when I started bumping into some challenges since this technology is freshly released and though obviously being exercised by Basecamp with their new [Hey email service](https://hey.com/) it has not been battle tested by the masses until now. 
+1) Any user must be able to easily differentiate their own messages in the view
+2) Any user must be able to edit only their own messages
+3) Every user sees updates in real time
 
-While the basic Turbo Frame and Turbo Stream patterns work fine for simple use cases one needs to get creative for more complicated use cases. In our case we wanted new messages to appear different to different users and in particular the current user sending the message. Unfortunately, Turbo currently only supports sending one version of a partial over action cable turbo streams and the general advice is to find your own solutions using Stimulus in such cases (see [this issue](https://github.com/hotwired/turbo-rails/issues/47)). 
+Naturally, we started with the third feature: updating in real time. This proved remarkably simple. We added the Turbo- and Stimulus-specific tags to the head of our layout:
 
-### First Impression: Stimulus Reflex
-
-StimulusReflex had been making a splash in recent years and especially the last few months: GoRails created an [introductory video](https://gorails.com/episodes/stimulus-reflex-basics) in mid-April of 2020, and less than two weeks later the SR team released a [Twitter clone demo video](https://www.youtube.com/watch?v=F5hA79vKE_E&ab_channel=Hopsoft) of their own. Both videos promote using SR rather than heavy front-end frameworks. It would be eight months between these videos and the release of Hotwire.
-
-The documentation and instrumentation for CR/SR seem quite mature and the development team is surprisingly accessible, friendly and generous on their [Discord channel](https://discord.gg/XveN625). This made integrating Stimulus Reflex straightforward, with a good human fallback if any hiccups happen.
-
-At its core Stimulus Reflex is a set of patterns that provides some glue between Stimulus js and CableReady. Like Hotwire, CableReady provides a mechanism to update the DOM by sending mostly HTML and operations to the client; however, unlike Hotwire, CableReady solely depends on WebSockets[^fn1]  for communication while Hotwire only uses ActionCable for its Turbo Stream feature. It is also worth noting that StimulusReflex leans on a cool js project [morphdom](https://github.com/patrick-steele-idem/morphdom) for some of its more advanced manipulations of the DOM. 
-
-Installation of StimulusReflex is pretty trivial following their docs but basically the steps were:
-
-```sh
-bundle add stimulus_reflex
-bundle exec rails stimulus_reflex:install
+```erb
+  <head>
+    <!-- in app/views/layouts/application.html.erb -->
+    <%= turbo_include_tags %>
+    <%= stimulus_include_tags %>
+    <!-- ... -->
+  </head>
 ```
 
-With Stimulus Reflex installed, we can move on to integrating it with our bare bones application.
+Recall that we have three models:
+
+* User - a handle representing a participating user
+* Room - a chat room or channel that contains messages
+* Message - a message from a User to a Room
+
+For any given room, we display a list of messages. To add the real-time aspect, we need a source of updates, and we add that as a Turbo Stream, using `turbo_stream_from(@room)`:
+
+```erb
+<!-- in app/views/rooms/show.html.erb -->
+<!-- next line added: -->
+  <%= turbo_stream_from @room %>
+  <div>
+    <%= @room.name %>:
+    <%= @room.description %>
+  </div>
+  <div id="messages">
+    <%= render @room.messages %>
+  </div>
+  <%= form_with model: [@room, Message.new] do |f| %>
+    <div>
+      <%= f.text_field(
+        :comment,
+        autocomplete: "off",
+        placeholder: "Start a conversation") %>
+    </div>
+  <% end %>
+```
+
+We need to tell the model that when there's a new message, send it to the appropriate Turbo Stream. We do that with `broadcasts_to` in the model's definition:
+
+```ruby
+# app/models/message.rb
+class Message < ApplicationRecord
+  belongs_to :room
+  belongs_to :user
+  broadcasts_to :room      # added
+end
+```
+
+That's it. When a message is created, it broadcasts to the associated room. Turbo infers the proper place to put a new message by looking for an element with an id of `messages`, and do the right thing when a message is created.
+
+Changes and deletion require a little more wiring, but not much. For this, we simply let Turbo know where a message lives by wrapping the message's partial in a `turbo-frame`:
+
+```erb
+<!-- in app/views/messages/_message.html.erb -->
+<%= turbo_frame_tag dom_id(message) %>
+  <div id="<%= dom_id(message) %>">
+    <div>
+        <span>
+          <%= link_to "edit", edit_room_message_path(message.room, message) %>
+        </span>
+        <span><%= message.user.handle %></span>
+        <span><%= message.created_at.strftime("%l:%M%P") %></span>
+    </div>
+    <div>
+      <%= message.comment %>
+    </div>
+  </div>
+<% end %>
+```
+
+Done! Now changes to messages will find the correct message, because we've used `dom_id(message)` to identify to the message to Turbo. But where is the user supposed to edit a message? Ah yes, the edit button. We would then expect that the 
+
+
+
+Next, we tell the controller that if the message is being updated from a `turbo-frame`, send it out on the associated stream:
+
+
 
 ### Customizing Stimulus Reflex
 

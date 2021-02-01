@@ -1,7 +1,7 @@
 
 # A Brief Study of Stimulus Reflex
 
-This post continues our exploration of Reactive Rails tools with [StimulusReflex](https://docs.stimulusreflex.com/) and its underlying library [CableReady](https://cableready.stimulusreflex.com/). This is the (third?) post in the series--if you need to catch up you can:
+This post continues our exploration of Reactive Rails tools with [StimulusReflex](https://docs.stimulusreflex.com/) and its underlying library [CableReady](https://cableready.stimulusreflex.com/). This is the third post in the series--if you need to catch up you can:
 
 * [Getting to Reactive Rails]()
 * [Reactive Rails from Bare Bones]()
@@ -214,7 +214,7 @@ In exploring the `reflex` part of StimulusReflex a little more thoroughly, we de
 </div>
 ```
 
-If this syntax (`change->Message#create`) seems odd at first, it may grow on you. The `change` sets the event on which to act, `Message` refers to the `MessageReflex` class we defined earlier, and `#create` marks the method to call on that reflex. By defining a reflex on the element, we can take advantage of the [client side callbacks](https://docs.stimulusreflex.com/lifecycle#client-side-reflex-callbacks) that StimulusReflex provides for all reflexes that have a corresponding (JavaScript) `Controller` in `app/javascript/controllers`. It would be nice to clear the input after creating the message, so we add the following:
+Stimulus Reflex inherits the quirky syntax (`change->Message#create`) from the Stimulus framework, adding in the `reflex:` innovation. If it seems odd at first, it may grow on you. The `change` sets the event on which to act, `Message` refers to the `MessageReflex` class we defined earlier, and `#create` marks the method to call on that reflex. By defining a reflex on the element, we can take advantage of the [client side callbacks](https://docs.stimulusreflex.com/lifecycle#client-side-reflex-callbacks) that StimulusReflex provides for all reflexes that have a corresponding (JavaScript) `Controller` in `app/javascript/controllers`. It would be nice to clear the input after creating the message, so we add the following:
 
 ```javascript
 // in app/javascript/controllers/message_controller.js
