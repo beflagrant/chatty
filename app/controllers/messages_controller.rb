@@ -1,6 +1,6 @@
 class MessagesController < ApplicationController
   before_action :set_room
-  before_action :set_message, only: [:edit, :update]
+  before_action :set_message, only: [:show, :edit, :update]
 
   def create
     @message = @room.messages.create(message_params)
@@ -9,6 +9,10 @@ class MessagesController < ApplicationController
       format.turbo_stream
       format.html { redirect_to @room }
     end
+  end
+
+  def show
+    render @message
   end
 
   def update

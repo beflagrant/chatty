@@ -1,0 +1,25 @@
+{
+  "identifier": {
+    "channel":"Turbo::StreamsChannel",
+    "signed_stream_name":"some-long-identifier"
+  },
+  "message":"
+    <turbo-stream action="append" target="messages">
+      <template>
+        <turbo-frame id="message_83">
+          <div id="message_83">
+            <span>
+              <a href="/rooms/1/messages/83/edit">edit</a> 
+            </span>
+            <span>bvandg</span>
+            <span>10:46pm</span>
+          </div>
+          <div>
+            this is the message body / comment / whatever
+          </div>
+        </turbo-frame>
+      </template>
+    </turbo-stream>
+  "
+}
+
