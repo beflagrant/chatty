@@ -297,6 +297,39 @@ We can solve this in a few ways, but the quick and dirty solution is to sleep fo
     end
 ```
 
+Identical behavior surfaces with `edit`. We can extract this delayed replacement into a function and reuse it in both places:
+
+```ruby
+# from app/controllers/messages_controller.rb
+
+  def create
+    @message = @room.messages.create(message_params)
+
+    respond_to do |format|
+      format.turbo_stream { send_delayed_replacement(@message) }
+      format.html { redirect_to @room }
+    end
+  end
+
+  def update
+    @message.update(message_params)
+    respond_to do |format|
+      format.turbo_stream { send_delayed_replacement(@message) }
+      format.html { redirect_to @room }
+    end
+  end
+
+  private
+
+  def send_delayed_replacement(message)
+    sleep 0.05
+    Turbo::StreamsChannel.broadcast_replace_later_to message.room,
+      target: message,
+      partial: "messages/message",
+      locals: { message: message, current_user: current_user }    
+  end
+```
+
 Worth a mention: this approach results in sending the message twice, but from a traffic point of view that's still small potatoes.
 
 Now that we've fixed what we've broken, we can get around to the first item on our feature list: any user must be able to easily differentiate their own messages in the view.
@@ -410,6 +443,7 @@ When this renders, we'll have nested elements with attributes we can make style 
 In the `body` element, we end up with a `data-viewer` attribute with a value of `1`.  The first message's `data-sender` value is 2, which doesn't trigger our css matcher: `[data-viewer="1"] turbo-frame[data-sender="1"]`. The _second_ message matches exactly both the attributes and value, and so the styles we've included will apply. Once again, for the real details, have a look at the [source](https://github.com/beflagrant/chatty/tree/hotwire).
 
 With feature #1 wrapped, let's add a little polish with the _other_ part of Hotwire: Stimulus.
+
 ### Finishing Touches
 
 If you've read the [previous post](http://beflagrant.com/blog/what), this next section will look a little familiar. Both Hotwire and Stimulus Reflex use Stimulus under the covers to get things _*chef's kiss*_. We have a few small gripes, and will address one of them here.
@@ -453,8 +487,17 @@ Remember the convention here: `event->controller#method`
 
 By following the convention, everything else is automatic. We don't need to modify our `application.js` file, throw dice, yell "Yahtzee" or anything.
 
+That's it, we're done.
 
-First, 
+## Conclusion
+
+If you've been keeping track, we've been able to accomplish a lot without doing very much at all. In fact, excluding CSS injection, we've completed our feature list after installing hotwire with just 30 lines of code, 8 of which are boilerplate or `end` statements. That's a very solid value for bytes spent.
+
+Remember that both Turbo and Stimulus have a fair lineage, so it's not surprising that things worked largely out of the box, save for the race condition we encountered.
+
+In the [next post](), we'll summarized what we've learned so far, and draw some comparisons and real conclusions from these experiments.
+
+---
 ## Features, Compared
 
 This starts the conversation on what is good for what type of application, and
