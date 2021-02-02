@@ -12,14 +12,6 @@
   color: rgba(30, 58, 138, var(--tw-text-opacity));
 }
 
-.action-block {
-  display: none;
-}
-
-[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
-  display: inline;
-}
-
 [data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .info-block {
   flex-direction: row-reverse;
 }
@@ -28,8 +20,6 @@
   margin-left: 0.5rem;
   margin-right: 0rem;
 }
-
-
 <% end %>
 
 <%= turbo_stream_from @room %>

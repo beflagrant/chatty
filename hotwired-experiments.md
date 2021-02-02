@@ -48,7 +48,7 @@ How fast can one get to a minimal/prototypical implementation?
 
 ## Integrating Hotwire
 
-To make this a little easier on your eyes, we'll remove the styling from the inline code here. If you want _all_ the deets, you can have a look at the [source code](https://github.com/beflagrant/chatty).
+To make this a little easier on your eyes, we'll remove the styling from the inline code here. If you want _all_ the deets, you can have a look at the [source code](https://github.com/beflagrant/chatty/tree/hotwire).
 
 Recall our required features:
 
@@ -182,7 +182,7 @@ Simple changes and deletion require a little more wiring, but not much. For this
 ```erb
 <!-- in app/views/messages/_message.html.erb -->
 <%= turbo_frame_tag dom_id(message) %>
-  <div id="<%= dom_id(message) %>">
+  <div>
     <div>
         <span>
           <%= link_to "edit", edit_room_message_path(message.room, message) %>
@@ -199,314 +199,262 @@ Simple changes and deletion require a little more wiring, but not much. For this
 
 Done! Now changes to messages will find the correct message, because we've used `dom_id(message)` to identify to the message to Turbo. But where is the user supposed to edit a message? Ah, the edit link.
 
+We would naturally expect the edit link to send us off to a page for editing a message, given we've provided no facility for our `turbo-frame` to take over. When we click the link, that doesn't happen at all. This can be a bit surprising and mysterious. In fact, the outgoing request is being intercepted, and the HTML for the form being returned as expected _but_ without any guidance as to where the resulting HTML should be displayed on the page, Turbo drops it into the ether.
 
-
-Because we have a `turbo-frame` on the page with the dom_id() of the message, 
-
-
-
-
- We would then expect clicking the edit link to render an edit page, but no! We have the heritage of Turbolinks baked in, so it requests the page and replaces the `turbo-frame` with 
-
-
-
-Next, we tell the controller that if the message is being updated from a `turbo-frame`, send it out on the associated stream:
-
-
-
-### Customizing Stimulus Reflex
-
-The model we'll be using Stimulus Reflex to manage is the Message, so we first need to generate the reflex classes we'll build on:
-
-```sh
-rails g stimulus_reflex message
-```
-
-This will create `application_controller.js` and `message_controller.js` files in `app/javascript/controllers` for housing the SR-specific JavaScript and create `application_reflex.rb` and `message_reflex.rb` in `app/reflexes` for the SR-specific Ruby.
-
-The first test in our app was to see how StimulusReflex did with broadcasting new messages to all client streams. We found that to be as trivial (and well-documented) in StimulusReflex as it was in Hotwire, so we decided to send a different payload to the message's creator than the one sent to other room subscribers.
-
-This task is somewhat inobvious. Thankfully, we received some advice from the SR Discord channel to check out [The Logical Splitter Example](https://cableready.stimulusreflex.com/leveraging-stimulus#example-3-the-logical-splitter) in the docs. We were also advised to explore CableReady's extensible [Custom Operations](https://cableready.stimulusreflex.com/customization#custom-operations). Let's walk through how this played out.
-
-First, we prepare our application layout. Inserting the user's id as a `meta` tag in the head of the layout will provide us with a reference we will use at later:
+Because we have a `turbo-frame` on the page with the dom_id() of the message, we can add a `turbo-frame` element to our edit form and provide the guidance needed. In this case, we just add a wrapper around the form, and give it the message's dom id:
 
 ```erb
-<%# in app/views/layouts/application.html.erb %>
-
-<%= tag(:meta, name: :cable_ready_id, content: current_user&.id) %>
+<!-- in app/views/messages/edit.html.erb -->
+<%= turbo_frame_tag dom_id(@message) do %>
+  <div>
+    <span><%= @message.user.handle %></span>
+    <span>
+      <%= @message.created_at.strftime('%l:%M') %>
+      <%= link_to "cancel", room_message_path(@message.room, @message) %>
+    </span>
+    <div>
+      <%= form_with model: [@message.room, @message] do  |f| %>
+        <div>
+          <%= f.text_field(
+            :comment,
+            autocomplete: "off" ) %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>
 ```
 
-In our `MessageReflex` class we specify that when created via reflex, the message should broadcast two html snippets, one for the html that everyone in the room will see (`default_html`), one snippet that is rendered when the current user is the author of the message (`custom_html`):
+Done. Now clicking 'edit' will replace the message with the populated message form, as we would expect. Incidentally, this doesn't affect routing directly. Typing `/rooms/1/messages/84/edit` (for example) would bring up the same form for editing the message with `id=84`. You can also put whatever other HTML you need to if you're doing a full-page render of the edit form, but only the `turbo-frame` content with the appropriate `dom_id()` will be merged into the page.
+
+We've now finished our simplistic edit/update workflow and completed the corresponding feature, but we have a problem.
+
+### Controlling Access
+
+While users can edit their own messages. Users can ALSO edit other users' messages. We can make this implementation less naïve by adding a simple check in our `edit` method on the controller:
 
 ```ruby
-# in app/reflexes/message_reflex.rb
-class MessageReflex < ApplicationReflex
-  delegate :current_user, to: :connection
-   
+  # in app/controllers/messages_controller.rb
+  def edit
+    render status: 403 unless @message.user == current_user
+  end
+```
+
+We finish up with a corresponding check in our message partial to elide the link if we're not the user who created the message:
+
+```erb
+        <!-- in app/views/messages/_message.html.erb -->
+        <% if current_user == message.user %>
+          <span>
+            <%= link_to "edit", edit_room_message_path(message.room, message) %>
+          </span>
+        <% end %>
+```
+
+You'll also note that there's a 'cancel' link, which links to the message's `show` route. Since our `_message` partial already includes the `turbo-frame`, it will replace the form with the message partial without us having to take any extra steps.
+
+For the curious, we're verifying that the responses come back as expected and are interpreted correctly by monitoring the network tab in the inspector, watching for responses to requests initiated by `application.js` and messages passed via the WebSocket. The WebSocket shows up as `cable` in Firefox's inspector.
+
+### Did We Break Anything?
+
+So, walking back through to verify our functionality all still works, we see an interesting thing. When we enter a new message using the text area at the bottom of the screen, our message appears, but the `edit` link is missing!
+
+What happened? Looking through the network tab on the inspector, we can see the that the result of the `POST` to `/rooms/:id/messages` is a status 204: No Content. So where did the message that popped up come from? It was sent via the WebSocket, because our Message model broadcasts it. However, the Message and WebSocket don't know anything about the current user, so it broadcasts the rendered template without the 'edit' link.
+
+We can fix this by directing the stream to immediately broadcast a `current_user`-aware rendering that replaces the existing `turbo-frame`:
+
+```ruby
+  # in app/controllers/messages_controller.rb
   def create
-    message = room.messages.create(comment: element.value, user: current_user)
+    @message = @room.messages.create(message_params)
 
-    message_broadcast(message, "##{dom_id(room)}", :insertAdjacentHtml)
-    morph :nothing
-  end
-  
-  def message_broadcast(message, selector, operation)
-    cable_ready[RoomChannel].logical_split(
-      selector: selector,
-      operation: operation,
-      default_html: render(message, locals: { for_messenger: false }),
-      custom_html: {
-        [current_user.id] => render(message, locals: { for_messenger: true }),
+    respond_to do |format|
+      format.turbo_stream {
+        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,
+          target: @message,
+          partial: "messages/message",
+          locals: { message: @message, editable: true }
       }
-    ).broadcast_to(room)
+      format.html { redirect_to @room }
+    end
   end
-
-  # ...
-
-  def room
-    @room ||= Room.find(element.dataset[:room_id])
-  end
-end
 ```
 
-We can see that the channel the broadcast will use is `RoomChannel`, which we need to define. We're also providing a selector using `dom_id(room)` as the target html element of the broadcast.
+This will immediately overwrite the message in the room for the person who initiated the message creation.
 
-The `StimulusReflex::Reflex class`, parent to `ApplicationReflex`, parent to our `MessageReflex` provides `element`, representing the html element that triggered the reflex. That element's dataset (all the `data-*` attributes of that element) includes a `:room_id`, allowing us to look up the specific Room we need.
+Well, it will overwrite the message _most_ of the time. Sometimes it doesn't! In fact, we've encountered a race condition: `broadcasts_to` in our Message model and `broadcast_replace_later_to` in the Message controller are both queueing a job. If the model's `broadcast_to` enqueues first, excellent. If not, then the controller's `broadcast_replace_later_to` will not find an element to replace, and will silently fail.
 
-As written, `RoomChannel` is boilerplate stuff. The `stream_for` indicates that for any given Room, a channel exists:
+We can solve this in a few ways, but the quick and dirty solution is to sleep for some very small amount of time. Not great, but good enough for our experiment:
 
 ```ruby
-# app/channels/room_channel.rb
-class RoomChannel < ApplicationCable::Channel
-  def subscribed
-    stream_for Room.find(params[:id])
-  end
-end
+  # still in app/controllers/messages_controller.rb
+    respond_to do |format|
+      format.turbo_stream {
+        sleep 0.1 # solves the race condition inelegantly
+        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,
+          # ...
+      }
+    end
 ```
 
-We'll add the Room's `id` to a `div` tag in our view using `dom_id(@room)` so the channel knows which element to target as a container. We also include the room's `id` in `data-room-id-value=`, which makes it a part of the element's dataset:
+Worth a mention: this approach results in sending the message twice, but from a traffic point of view that's still small potatoes.
+
+Now that we've fixed what we've broken, we can get around to the first item on our feature list: any user must be able to easily differentiate their own messages in the view.
+
+### Differentiating our own Messages
+
+This isn't as important to the experiment as the actual _function_ of the application (though it would certainly be in a real product), but it's worth doing for the sake of completeness. We wouldn't launch without this kind of experience, so maybe we shouldn't experiment without it either, eh?
+
+We could solve this with code, but this is most expediently solved with CSS. First we add a content area for styles in our layout, and add a data attribute (`data-viewer`) to our `body`:
 
 ```erb
-<%# in app/views/rooms/show.html.erb %>
-<div id="<%= dom_id(@room) %>" class="pt-4 mr-4 flex flex-col"
-    data-controller="room"
-    data-room-id-value=<%= @room.id %>>
-  <%= render @room.messages %>
-</div>
+  <!-- in app/views/layouts/application.html/erb -->
+  <head>
+    <!-- other stuff -->
+    <style>
+      <%= yield :custom_style %>
+    </style>
+  </head>
+  <body data-viewer="<%= current_user&.id %>">
+    <!-- more stuff -->
+  </body>
 ```
 
-Specifically, within the channel RoomChannel, the broadcast targets the `logical_split` custom operation. We define that custom operation in our `application.js` file:
+Adding the attribute to body lets us match on attributes attached to our message elements. Next we'll add an attribute to our message partial:
 
-```javascript
-// in app/javascript/packs/application.js
-import CableReady from 'cable_ready'
+```erb
+<!-- in app/views/messages/_message.html.erb -->
+<%= turbo_frame_tag dom_id(message), 
+                    data: { sender: message.user.id } do %>
+  <!-- message contents -->
+<% end %>
+```
 
-// note the change in case convention!
-// logicalSplit in js <-> logical_split in ruby
-CableReady.DOMOperations['logicalSplit'] = detail => {
-  const crId = document.querySelector('meta[name="cable_ready_id"]').content
-  const custom = Object.entries(detail.customHtml).find(pair => pair[0].includes(crId)
-  const html = custom ? custom[1] : detail.defaultHtml
-  CableReady.DOMOperations[detail.operation]({
-    element: detail.element,
-    html: html,
-  })
+Finally, we can add styles to our room's show page:
+
+```erb
+<!-- in app/views/rooms/show.html.erb -->
+<% content_for :custom_style do %>
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] {
+  text-align: right;
+  align-self: flex-end;
+  justify-content: flex-end;
 }
-import "controllers"
+
+/* additional styles */
+
+<% end %>
+
+<%= turbo_stream_from @room %>
+  <!-- contents -->
+<% end %>
 ```
 
-Finally we set up the channel as outlined in the manual using a room controller:
+When this renders, we'll have nested elements with attributes we can make style decisions about. Again, we've removed noise for clarity, but we end up looking like this:
+
+```html
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- head stuff -->
+    <style>
+      [data-viewer="1"] turbo-frame[data-sender="1"] {
+        text-align: right;
+        align-self: flex-end;
+        justify-content: flex-end;
+      }
+
+      /* style stuff */
+
+    </style>
+  </head>
+  <body data-viewer="1">
+    <turbo-cable-stream-source 
+      channel="Turbo::StreamsChannel" 
+      signed-stream-name="stream-name">
+    </turbo-cable-stream-source>
+    <div id="messages">
+      <turbo-frame data-sender="2" id="message_131">
+        <div class="info-block">
+          <span>jdoe</span>
+          <span>7:40pm</span>
+        </div>
+        <div>
+          message content
+        </div>
+      </turbo-frame>
+      <turbo-frame data-sender="1" id="message_132">
+        <div class="info-block">
+          <span class="action-block">
+            <a href="/rooms/1/messages/132/edit">edit</a>
+          </span>
+          <span>bvandg</span>
+          <span>7:42pm</span>
+        </div>
+        <div>
+          additional message content
+        </div>
+      </turbo-frame>
+    </div>
+    <form action="/rooms/1/messages" accept-charset="UTF-8" method="post">
+      <input type="hidden" name="authenticity_token" value="authtoken" />
+      <div class="flex">
+        <input type="text" name="message[comment]" id="message_comment" />
+      </div>
+    </form>
+  </body>
+</html>
+```
+
+In the `body` element, we end up with a `data-viewer` attribute with a value of `1`.  The first message's `data-sender` value is 2, which doesn't trigger our css matcher: `[data-viewer="1"] turbo-frame[data-sender="1"]`. The _second_ message matches exactly both the attributes and value, and so the styles we've included will apply. Once again, for the real details, have a look at the [source](https://github.com/beflagrant/chatty/tree/hotwire).
+
+With feature #1 wrapped, let's add a little polish with the _other_ part of Hotwire: Stimulus.
+### Finishing Touches
+
+If you've read the [previous post](http://beflagrant.com/blog/what), this next section will look a little familiar. Both Hotwire and Stimulus Reflex use Stimulus under the covers to get things _*chef's kiss*_. We have a few small gripes, and will address one of them here.
+
+When we enter a message into our message form at the bottom of the page, it submits on enter, but the text just sits there accusingly. We'd like the text field to reset. Since we're not rendering the page afterward, we have to scrape this clean using JavaScript. [Stimulus](https://stimulus.hotwire.dev/) gives us some neat tools to collect this polish (and even more complex things) into controllers.
+
+First, we'll build the tiniest controller:
 
 ```javascript
-// in app/javascript/controllers/room_controller.js
-
-import { Controller } from 'stimulus'
-import CableReady from 'cable_ready'
+// either: app/assets/javascripts/controllers/reset_form_controller.js
+//     or: app/javascripts/controllers/reset_form_controller.js
+import { Controller } from "stimulus"
 
 export default class extends Controller {
-  static values = { id: String }
-
-  connect () {
-    this.channel = this.application.consumer.subscriptions.create(
-      {
-        channel: 'RoomChannel',
-        id: this.idValue,
-      },
-      {
-        received (data) { if (data.cableReady) CableReady.perform(data.operations) }
-      }
-    )
-  }
-
-  disconnect () {
-    this.channel.unsubscribe()
+  reset() {
+    this.element.reset()
   }
 }
 ```
 
-Simple, right?
+It has one function, and that's it. In the context of the controller, `this` refers to the element on which the controller and action are defined. We then add two data elements to our form. These elements identify the controller and the action to perform. In this case, the action takes advantage of a custom event provided by Turbo--`turbo:submit-end`:
 
-In many circumstances, there's no need to build all of this custom code. CableReady provides a diverse and comprehensive array of [operations](https://cableready.stimulusreflex.com/reference/operations) out of the box to manipulate the DOM and interact with the browser. We customized specifically because we wanted different visuals to highlight messages posted by the current user, which _doesn't_ happen out of the box. (Recall that in our Hotwire implementation, we did this using CSS.) This cost us ~50 lines of custom code and some boilerplate.
-
-One neat feature of CableReady is that is can be used almost [anywhere](https://cableready.stimulusreflex.com/cableready-everywhere) in your Rails app. This is a fairly standard form for creating a message:
-
-```ruby
-<div class="bg-primary bg-opacity-90 w-full p-4">
-  <%= form_with model: [@room, Message.new] do |f| %>
+```erb
+  <%= form_with model: [@room, Message.new],
+                data: { 
+                  controller: "reset_form", 
+                  action: "turbo:submit-end->reset_form#reset"
+                } do |f| %>
     <div class="flex">
       <%= f.text_field(
         :comment,
         autocomplete: "off",
-        placeholder: "Start a conversation",
-        class: "rounded-full border p-3 flex-1 text-sm outline-none") %>
-     </div>
-   <% end %>
-</div>
-```
-
-We can use `CableReady::Broadcaster` (which extends `ActiveSupport::Concern`) in our Message controller to broadcast a newly-created message:
-
-```ruby
-# app/controllers/message_controller.rb
-class MessageController < ApplicationController
-  include CableReady::Broadcaster
-  def create
-    @message = @room.messages.create(message_params)
-
-    cable_ready[RoomChannel].logical_split(
-      selector: dom_id(@room),
-      operation: :insertAdjacentHtml,
-      default_html: render_to_string(@message, locals: { for_messenger: false }),
-      custom_html: {
-      [@message.user_id] => render_to_string(@message, locals: { for_messenger: true }),
-    }
-  )
-    cable_ready.broadcast_to(@room)
-  end
-end
-```
-
-We could have used an `after_create` hook in the Message model for the same effect.
-
-In exploring the `reflex` part of StimulusReflex a little more thoroughly, we decided to move the logic into a Reflex. This way we won't need a `<form>` tag at all. To do that, we add a `reflex:` key to our text field's data attribute:
-
-```ruby
-<div class="bg-primary bg-opacity-90 w-full p-4" data-controller="message">
-  <div class="flex">
-    <%= text_field_tag(:comment, "",
-      autocomplete: "off",
-      placeholder: "Start a conversation",
-      class: "rounded-full border p-3 flex-1 text-sm outline-none",
-      data: { reflex: "change->Message#create", room_id: @room.id }) %>
-  </div>
-</div>
-```
-
-If this syntax (`change->Message#create`) seems odd at first, it may grow on you. The `change` sets the event on which to act, `Message` refers to the `MessageReflex` class we defined earlier, and `#create` marks the method to call on that reflex. By defining a reflex on the element, we can take advantage of the [client side callbacks](https://docs.stimulusreflex.com/lifecycle#client-side-reflex-callbacks) that StimulusReflex provides for all reflexes that have a corresponding (JavaScript) `Controller` in `app/javascript/controllers`. It would be nice to clear the input after creating the message, so we add the following:
-
-```javascript
-// in app/javascript/controllers/message_controller.js
-   createSuccess(element) {
-     element.value = ''
-   }
-```
-
-Looking back at the `create` method of `MessageReflex` above you will note the call to `morph :nothing`. In that reflex we are overriding the default behavior and using CableReady directly.
-
-As we tackle editing behavior, we can showcase the default morph behavior or a reflex. Let's start with our message partial. While the partial is very busy, it doesn't deviate too far from what we'd expect the partial to look like in a typical Rails application:
-
-```erb
-<%# app/views/messages/_message.html.erb %>
-<div class="<%= message_color(message, local_assigns) %>
-            rounded-2xl px-4 py-2 mb-2 text-s w-fit"
-     id="<%= dom_id(message) %>"
-     data-reflex-root="#<%= dom_id(message) %>"
-     data-controller="message">
-  <div class="flex flex-row items-center">
-    <div>
-      <span class="inline-block font-bold text-sm"><%= message.user.handle %></span>
-      <span class="inline-block ml-1 text-xs"><%= message.created_at.strftime("%l:%M%P") %></span>
-      <% if for_messenger?(message, local_assigns) %>
-        <% if @editing %>
-          <span data-reflex="click->Message#cancel" data-id=<%= message.id %> class="inline-block text-xs ml-2 hover:underline">
-            Cancel
-          </span>
-        <% else %>
-          <span data-reflex="click->Message#edit" data-id=<%= message.id %> class="inline-block text-xs ml-2 hover:underline">
-            Edit
-          </span>
-        <% end %>
-      <% end %>
-    </div>
-  </div>
-  <% if @editing %>
-    <%= text_area_tag :comment, message.comment,
-      class: "block min-w-min w-72 md:w-96 m-2 h-32 p-2 text-black",
-      data: {
-        reflex: "change->Message#update",
-        action: "keyup->message#keyup",
-        id: message.id,
-        room_id: message.room_id } %>
-  <% else %>
-    <div class="text-black w-full">
-      <%= message.comment %>
+        placeholder: "Start a conversation") %>
     </div>
   <% end %>
-</div>
 ```
 
-We are building this as an exploration, otherwise we might not mix up quite as much logic into our partial. We can inform the partial whether or not the viewer is the messenger--the message sender--or not with the following helper:
+What we're saying is this: load the `reset_form` controller, and on the `turbo:submit-end` event (that is, when the event has returned from its submit) fire the reset() method on that controller. 
 
-```ruby
-module MessageHelper
-  def message_color(message, locals)
-    for_messenger?(message, locals) ? "bg-sky text-blue-900" : "bg-tan text-yellow-900"
-  end
+Remember the convention here: `event->controller#method`
 
-  def is_messenger?(message)
-    message.user == current_user
-  end
+By following the convention, everything else is automatic. We don't need to modify our `application.js` file, throw dice, yell "Yahtzee" or anything.
 
-  def for_messenger?(message, locals)
-    for_messenger = locals[:for_messenger]
-    for_messenger.nil? ? is_messenger?(message) : for_messenger
-  end
-end
-```
 
-As a result, viewers will be able to differentiate between message they've sent and those sent by others regardless of whether or not they're receiving messages as a result of a page refresh or missives from the channel they're subscribed to.
-
-We also now can see our remaining edit/update reflexes setup in the view partial which respectively call the falling actions in our MessageReflex: 
-
-```ruby
-  def edit
-    @message = Message.find(element.dataset[:id])
-    @editing = true
-  end
-
-  def update
-    message = Message.find(element.dataset[:id])
-    message.update(comment: element[:value])
-
-    message_broadcast(message, "##{dom_id(message)}", :outerHtml)
-    morph :nothing
-  end
-```
-
-Looks strangely familiar; almost like a controller you might say? The edit reflex is using a page morph which will use the default StimulusReflex controller to do a full morph of the current user's html using the efficient diffing logic of morphdom js with lightening speed and no flashes. Our comment is immediately transformed into a text field for in place editing that users have come to expect from modern web applications. This is the closest we got to the traditional use of StimulusReflex in which a user page interaction creates an immediate effect on the page; however, notice that all our instructions are coming the server side!
-
-You will also notice the reuse of the message_broadcast method in the MessageReflex#update action, this time using the CableReady outerHtml method which will match and replace the message by dom_id for all subscribers to the room channel. And a final little gesture of Stimulus, this time a data-action for the keyup event which calls this action in our js controller: 
-
-```javascript
-  keyup(event) {
-    if(event.key === "Enter") { this.stimulate("Message#update", event.target) }
-  }
-```
-
-As you can see reflexes can also be called from the client side so that hitting enter triggers an update from the message comment edit text area box. 
-
-With this we have nowhere near exhausted the capabilities of CableReady and StimulusReflex but just with these few features given a pretty impressive demonstration of the potential nonetheless.
-
+First, 
 ## Features, Compared
 
 This starts the conversation on what is good for what type of application, and

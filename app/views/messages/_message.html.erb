@@ -1,11 +1,12 @@
-<%= turbo_frame_tag dom_id(message), class: "flex flex-row w-full", "data-sender": message.user.id do %>
+<%= turbo_frame_tag dom_id(message), class: "flex flex-row w-full", data: { sender: message.user.id } do %>
   <div class="bg-purple text-indigo-900 rounded-2xl px-4 py-2 mb-2 text-s w-fit"
-       style="max-width: 66%;"
-       id="<%= dom_id(message) %>">
+       style="max-width: 66%;">
     <div class="flex flex-row items-center info-block">
-        <span class="mr-2 text-xs action-block">
-          <%= link_to "edit", edit_room_message_path(message.room, message) %>
-        </span>
+        <% if (current_user == message.user || (defined?(editable) && editable)) %>
+          <span class="mr-2 text-xs action-block">
+            <%= link_to "edit", edit_room_message_path(message.room, message) %>
+          </span>
+        <% end %>
 
         <span class="font-bold text-sm"><%= message.user.handle %></span>
         <span class="ml-1 text-xs"><%= message.created_at.strftime("%l:%M%P") %></span>
