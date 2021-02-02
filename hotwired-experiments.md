@@ -513,39 +513,3 @@ If you've been keeping track, we've been able to accomplish a lot without doing 
 Remember that both Turbo and Stimulus have a fair lineage, so it's not surprising that things worked largely out of the box, save for the race condition we encountered.
 
 In the [next post](), we'll summarized what we've learned so far, and draw some comparisons and real conclusions from these experiments.
-
----
-## Features, Compared
-
-This starts the conversation on what is good for what type of application, and
-where the trade-offs live.
-Stimulus (Common)
-Hotwire / Turbo
-Stimulus Reflex
-
-GOTCHA: session data doesn't go over the wire
-
-GOTCHA: only one version of the partial is broadcast -- the user display
-handling needs to be alive on the client (browser)
-
-NOTE: multi-user applications become more difficult in this case, but the
-competing solution was a cable-ready solution with multiple broadcast branches
-
-## Active Development / Support
-
-Current issues, lifetime contributions, active community, backing and likely
-adoption based on current understanding.
-Experience Report / Observations
-Describe our use case, and why we were having this discussion with some
-particulars, our goals from a user experience and implementation point of view.
-
-Describe what we chose and why we chose it for this use case, with a YMMV.
-
-## Conclusions
-
-Summary of comparisons, recommendations for use cases.
-
-## References
-
-- Hotwire repo: [https://github.com/hotwired/hotwire-rails](https://github.com/hotwired/hotwire-rails)
-- Hotwire tutorial on GoRails: [https://gorails.com/episodes/hotwire-rails](https://gorails.com/episodes/hotwire-rails)
