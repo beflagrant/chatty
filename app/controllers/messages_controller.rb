@@ -6,14 +6,7 @@ class MessagesController < ApplicationController
     @message = @room.messages.create(message_params)
 
     respond_to do |format|
-      format.turbo_stream {
-        # race condition here!
-        # sleep 0.05
-        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,
-          target: @message,
-          partial: "messages/message",
-          locals: { message: @message, current_user: current_user }
-      }
+      format.turbo_stream { send_delayed_replacement(@message) }
       format.html { redirect_to @room }
     end
   end
@@ -24,6 +17,10 @@ class MessagesController < ApplicationController
 
   def update
     @message.update(message_params)
+    respond_to do |format|
+      format.turbo_stream { send_delayed_replacement(@message) }
+      format.html { redirect_to @room }
+    end
   end
 
   def edit
@@ -31,6 +28,15 @@ class MessagesController < ApplicationController
   end
 
   private
+
+  def send_delayed_replacement(message)
+    # race condition here!
+    sleep 0.05
+    Turbo::StreamsChannel.broadcast_replace_later_to message.room,
+      target: message,
+      partial: "messages/message",
+      locals: { message: message, current_user: current_user }    
+  end
 
   def set_message
     @message = @room.messages.find_by_id(params[:id])
