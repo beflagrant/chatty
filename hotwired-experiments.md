@@ -332,6 +332,8 @@ Identical behavior surfaces with `edit`. We can extract this delayed replacement
 
 Worth a mention: this approach results in sending the message twice, but from a traffic point of view that's still small potatoes.
 
+Another quirk: because the controller issuing the Turbo Stream directive only knows about the user making the change, _all_ users receiving the message will see an 'edit' button for all new or updated messages. If they click it nothing will happen (thanks to our guard above), but we might as well avoid that circumstance. Because this is an experiment, a cheap and easy way to do that is with CSS, which we'll discuss more in the next section.
+
 Now that we've fixed what we've broken, we can get around to the first item on our feature list: any user must be able to easily differentiate their own messages in the view.
 
 ### Differentiating our own Messages
@@ -441,6 +443,21 @@ When this renders, we'll have nested elements with attributes we can make style 
 ```
 
 In the `body` element, we end up with a `data-viewer` attribute with a value of `1`.  The first message's `data-sender` value is 2, which doesn't trigger our css matcher: `[data-viewer="1"] turbo-frame[data-sender="1"]`. The _second_ message matches exactly both the attributes and value, and so the styles we've included will apply. Once again, for the real details, have a look at the [source](https://github.com/beflagrant/chatty/tree/hotwire).
+
+As a final touch, let's fix the 'edit' button's display too. By default, the element containing actions shouldn't be visible, only showing up if the current viewer is the same as the message's sender:
+
+```css
+/* in the content_for :custom_style block of app/views/rooms/show.html.erb */
+.action-block {
+  display: none;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
+  display: inline;
+}
+```
+
+By putting this in place, updates coming from the Turbo Stream won't display an 'edit'--even if it's rendered--unless the viewer is also the message author.
 
 With feature #1 wrapped, let's add a little polish with the _other_ part of Hotwire: Stimulus.
 

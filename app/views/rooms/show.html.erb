@@ -20,6 +20,16 @@
   margin-left: 0.5rem;
   margin-right: 0rem;
 }
+
+.action-block {
+  display: none;
+}
+
+[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
+  display: inline;
+}
+
+
 <% end %>
 
 <%= turbo_stream_from @room %>
