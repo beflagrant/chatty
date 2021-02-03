@@ -20,19 +20,10 @@
   margin-left: 0.5rem;
   margin-right: 0rem;
 }
-
-.action-block {
-  display: none;
-}
-
-[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
-  display: inline;
-}
-
-
 <% end %>
 
-<%= turbo_stream_from @room %>
+  <%= turbo_stream_from @room %>
+  <%= turbo_stream_from @room, current_user %>
   <div class="text-center p-2 bg-purple-100 text-sm shadow-lg relative">
     <b class="uppercase"><%= @room.name %>:</b>
     <%= @room.description %>

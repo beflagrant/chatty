@@ -32,7 +32,7 @@ class MessagesController < ApplicationController
   def send_delayed_replacement(message)
     # race condition here!
     sleep 0.05
-    Turbo::StreamsChannel.broadcast_replace_later_to message.room,
+    Turbo::StreamsChannel.broadcast_replace_later_to message.room, current_user,
       target: message,
       partial: "messages/message",
       locals: { message: message, current_user: current_user }    

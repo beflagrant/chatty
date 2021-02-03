@@ -2,7 +2,7 @@
   <div class="bg-purple text-indigo-900 rounded-2xl px-4 py-2 mb-2 text-s w-fit"
        style="max-width: 66%;">
     <div class="flex flex-row items-center info-block">
-        <% if (current_user == message.user || (defined?(editable) && editable)) %>
+        <% if current_user == message.user %>
           <span class="mr-2 text-xs action-block">
             <%= link_to "edit", edit_room_message_path(message.room, message) %>
           </span>

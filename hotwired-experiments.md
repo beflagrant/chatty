@@ -7,7 +7,7 @@ We continue our exploration of Reactive Rails tools with [Hotwire](https://hotwi
 * [Reactive Rails from Bare Bones]()
 * [A Brief Study of Stimulus Reflex]()
 
-In the post follosing this, we'll look at both of our chosen contenders. For now, we'll focus on Hotwire by its lonesome.
+In the post following this, we'll look at both of our chosen contenders. For now, we'll focus on Hotwire by its lonesome.
 
 Hotwire is an umbrella project that melds [Turbo](https://turbo.hotwire.dev/) and [Stimulus](https://stimulus.hotwire.dev). Turbo supersedes [Turbolinks](https://github.com/turbolinks/turbolinks), a long-time Rails standby for accelerating web view rendered on the server side. Turbo continues this feature set while adding _Turbo Frames_ and _Turbo Streams_. Turbo Frames allow you to create a component with independent functionality, somewhat similar to an `iframe` in concept. Turbo Streams provide a communication layer between your service and (among other things) the Turbo Frames using WebSockets or server-sent events (SSE).
 
@@ -261,7 +261,21 @@ So, walking back through to verify our functionality all still works, we see an 
 
 What happened? Looking through the network tab on the inspector, we can see the that the result of the `POST` to `/rooms/:id/messages` is a status 204: No Content. So where did the message that popped up come from? It was sent via the WebSocket, because our Message model broadcasts it. However, the Message and WebSocket don't know anything about the current user, so it broadcasts the rendered template without the 'edit' link.
 
-We can fix this by directing the stream to immediately broadcast a `current_user`-aware rendering that replaces the existing `turbo-frame`:
+We can fix this by sending a rendering that replaces the current `turbo-frame` but includes the 'edit' link. We only want to send this to the User who created the message, and only to the Room the message is in. This implies we need a different stream, one keyed to those _two_ factors, not just the room itself. We can easily add that stream to our `rooms/show` view:
+
+```erb
+<!-- in app/views/rooms/show.html.erb -->
+  <%= turbo_stream_from @room %>
+  <%= turbo_stream_from @room, current_user %>
+
+```
+
+To be clear about what's happening here:
+
+* `turbo_stream_from @room` creates a single stream that is common to all viewers in the room, giving us a multicast stream
+* `turbo_stream_from @room, current_user` creates a stream that is individual to each user in that room, giving us a much more targeted stream
+
+With that in place, we can direct the replacement broadcast to the new stream in our Messages controller, which will only direct the replacement to the initiating user:
 
 ```ruby
   # in app/controllers/messages_controller.rb
@@ -270,19 +284,19 @@ We can fix this by directing the stream to immediately broadcast a `current_user
 
     respond_to do |format|
       format.turbo_stream {
-        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,
+        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,  current_user
           target: @message,
           partial: "messages/message",
-          locals: { message: @message, editable: true }
+          locals: { message: @message, current_user: current_user }
       }
       format.html { redirect_to @room }
     end
   end
 ```
 
-This will immediately overwrite the message in the room for the person who initiated the message creation.
+This will immediately overwrite the message in the room for the person who initiated the message creation, and include the 'edit' link as it should.
 
-Well, it will overwrite the message _most_ of the time. Sometimes it doesn't! In fact, we've encountered a race condition: `broadcasts_to` in our Message model and `broadcast_replace_later_to` in the Message controller are both queueing a job. If the model's `broadcast_to` enqueues first, excellent. If not, then the controller's `broadcast_replace_later_to` will not find an element to replace, and will silently fail.
+Well, okay--it will overwrite the message _most_ of the time. Sometimes it doesn't! In fact, we've encountered a race condition: `broadcasts_to` in our Message model and `broadcast_replace_later_to` in the Message controller are both queueing a job. If the model's `broadcast_to` enqueues first, excellent. If not, then the controller's `broadcast_replace_later_to` will not find an element to replace, and will silently fail.
 
 We can solve this in a few ways, but the quick and dirty solution is to sleep for some very small amount of time. Not great, but good enough for our experiment:
 
@@ -290,14 +304,14 @@ We can solve this in a few ways, but the quick and dirty solution is to sleep fo
   # still in app/controllers/messages_controller.rb
     respond_to do |format|
       format.turbo_stream {
-        sleep 0.1 # solves the race condition inelegantly
-        Turbo::StreamsChannel.broadcast_replace_later_to @message.room,
+        sleep 0.05 # solves the race condition inelegantly
+        Turbo::StreamsChannel.broadcast_replace_later_to @message.room, current_user
           # ...
       }
     end
 ```
 
-Identical behavior surfaces with `edit`. We can extract this delayed replacement into a function and reuse it in both places:
+Identical behavior surfaces when a Message is updated. We can extract this delayed replacement into a function and reuse it in both places:
 
 ```ruby
 # from app/controllers/messages_controller.rb
@@ -323,7 +337,7 @@ Identical behavior surfaces with `edit`. We can extract this delayed replacement
 
   def send_delayed_replacement(message)
     sleep 0.05
-    Turbo::StreamsChannel.broadcast_replace_later_to message.room,
+    Turbo::StreamsChannel.broadcast_replace_later_to message.room, current_user
       target: message,
       partial: "messages/message",
       locals: { message: message, current_user: current_user }    
@@ -331,8 +345,6 @@ Identical behavior surfaces with `edit`. We can extract this delayed replacement
 ```
 
 Worth a mention: this approach results in sending the message twice, but from a traffic point of view that's still small potatoes.
-
-Another quirk: because the controller issuing the Turbo Stream directive only knows about the user making the change, _all_ users receiving the message will see an 'edit' button for all new or updated messages. If they click it nothing will happen (thanks to our guard above), but we might as well avoid that circumstance. Because this is an experiment, a cheap and easy way to do that is with CSS, which we'll discuss more in the next section.
 
 Now that we've fixed what we've broken, we can get around to the first item on our feature list: any user must be able to easily differentiate their own messages in the view.
 
@@ -444,21 +456,6 @@ When this renders, we'll have nested elements with attributes we can make style 
 
 In the `body` element, we end up with a `data-viewer` attribute with a value of `1`.  The first message's `data-sender` value is 2, which doesn't trigger our css matcher: `[data-viewer="1"] turbo-frame[data-sender="1"]`. The _second_ message matches exactly both the attributes and value, and so the styles we've included will apply. Once again, for the real details, have a look at the [source](https://github.com/beflagrant/chatty/tree/hotwire).
 
-As a final touch, let's fix the 'edit' button's display too. By default, the element containing actions shouldn't be visible, only showing up if the current viewer is the same as the message's sender:
-
-```css
-/* in the content_for :custom_style block of app/views/rooms/show.html.erb */
-.action-block {
-  display: none;
-}
-
-[data-viewer="<%= current_user.id %>"] turbo-frame[data-sender="<%= current_user.id %>"] .action-block {
-  display: inline;
-}
-```
-
-By putting this in place, updates coming from the Turbo Stream won't display an 'edit'--even if it's rendered--unless the viewer is also the message author.
-
 With feature #1 wrapped, let's add a little polish with the _other_ part of Hotwire: Stimulus.
 
 ### Finishing Touches
@@ -513,3 +510,4 @@ If you've been keeping track, we've been able to accomplish a lot without doing 
 Remember that both Turbo and Stimulus have a fair lineage, so it's not surprising that things worked largely out of the box, save for the race condition we encountered.
 
 In the [next post](), we'll summarized what we've learned so far, and draw some comparisons and real conclusions from these experiments.
+
